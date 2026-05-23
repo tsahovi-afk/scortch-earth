@@ -5,28 +5,14 @@
     <title>טנקים נגד טנקים</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
         #game-container { position: relative; display: none; }
         canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; max-width: 100vw; height: auto; }
-        
-        .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 20px; pointer-events: none; font-family: monospace; }
-        .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 5px 10px; border-radius: 4px; min-width: 110px; text-align: center; box-shadow: 0 0 10px rgba(255, 204, 0, 0.1); }
-        .ui-panel-box h3 { margin: 0 0 2px 0; font-size: 13px; text-shadow: 1px 1px #000; }
-        .ui-panel-box div { font-size: 11px; margin: 1px 0; }
-        .active-turn-box { border-color: #00ff00 !important; box-shadow: 0 0 15px #00ff00 !important; }
-
-        #turn-timer-display { background: #000; border: 3px double #ffcc00; color: #ffcc00; font-size: 24px; font-weight: bold; padding: 5px 15px; border-radius: 4px; min-width: 50px; text-align: center; text-shadow: 0 0 8px #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.3); }
-
-        #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; text-align: center; }
-        
-        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; max-width: 90vw; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); box-sizing: border-box; }
-        button { background-color: #ffcc00; color: #000; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; margin: 12px 4px 0 4px; cursor: pointer; border-radius: 5px; }
-        
-        .color-dot { display: inline-block; width: 45px; height: 35px; border: 2px solid #444; cursor: pointer; margin: 3px; }
+        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
+        button { background-color: #ffcc00; color: #000; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; margin: 10px; cursor: pointer; border-radius: 5px; }
+        .color-dot { display: inline-block; width: 40px; height: 30px; margin: 5px; border: 2px solid #555; cursor: pointer; border-radius: 4px; }
         .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; }
-
-        #mobile-controls { display: none; width: 100%; max-width: 800px; justify-content: space-between; padding: 10px 20px; background: #151515; border-top: 2px solid #ffcc00; margin-top: auto; }
-        .touch-btn { background: #222; color: #ffcc00; border: 2px solid #ffcc00; padding: 15px; border-radius: 6px; cursor: pointer; }
+        #status { color: #ffcc00; font-size: 20px; font-weight: bold; margin: 10px; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -34,81 +20,80 @@
 
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים</h2>
-        <input type="text" id="player-name-input" value="צהובי">
-        <div id="color-grid">
-            <div class="color-dot selected" style="background-color:#ffcc00" onclick="chosenColor='#ffcc00'"></div>
-            <div class="color-dot" style="background-color:#ff3333" onclick="chosenColor='#ff3333'"></div>
-            <div class="color-dot" style="background-color:#00ff00" onclick="chosenColor='#00ff00'"></div>
+        <label>כינוי קרב:</label>
+        <input type="text" id="player-name-input" value="צהובי" style="width:100%; padding:8px; margin-bottom:10px;">
+        
+        <label>בחר צבע מותג:</label>
+        <div id="color-grid" style="margin-bottom:15px;">
+            <div class="color-dot selected" style="background-color:#ffcc00" onclick="selectColor(this, '#ffcc00')"></div>
+            <div class="color-dot" style="background-color:#ff3333" onclick="selectColor(this, '#ff3333')"></div>
+            <div class="color-dot" style="background-color:#00ff00" onclick="selectColor(this, '#00ff00')"></div>
+            <div class="color-dot" style="background-color:#33ccff" onclick="selectColor(this, '#33ccff')"></div>
+            <div class="color-dot" style="background-color:#ffffff" onclick="selectColor(this, '#ffffff')"></div>
+            <div class="color-dot" style="background-color:#111111; border: 2px dashed #ffcc00" onclick="selectColor(this, '#111111')"></div>
         </div>
-        <button onclick="connectToLobby()">התחבר למשחק</button>
+        <button onclick="joinLobby()">התחבר ללובי</button>
     </div>
 
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ הגדרות זירה</h2>
-        <select id="total-players-select"><option value="2">2 שחקנים</option><option value="4">4 שחקנים</option></select>
-        <select id="ai-difficulty-select"><option value="easy">קל</option><option value="medium" selected>בינוני</option><option value="hard">חזק</option></select>
-        <button onclick="startGameEngine()">שגר משחק!</button>
+        <label>סה"כ שחקנים (אדם + מחשב):</label>
+        <select id="total-players-select" style="width:100%; padding:8px;">
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+        </select>
+        <label>כמות בוטים (מחשב):</label>
+        <select id="ai-players-select" style="width:100%; padding:8px;">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        </select>
+        <button onclick="startGame()">שגר משחק!</button>
     </div>
 
     <div id="game-container">
-        <div id="dynamic-ui-bar" class="ui-bar"></div>
         <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="status"></div>
     </div>
 
     <script>
-        let socket, myId, gameActive = false, currentTurnId = null, gamePlayers = {}, turnOrder = [], projectile = null, terrain = [];
-        let myAngle = 45, myPower = 50, turnSecondsLeft = 10, turnTimerInterval = null, chosenColor = '#ffcc00';
+        let socket, myId, gameActive = false, gamePlayers = {}, chosenColor = '#ffcc00';
 
-        function connectToLobby() {
+        function selectColor(el, color) {
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+            el.classList.add('selected');
+            chosenColor = color;
+        }
+
+        function joinLobby() {
             document.getElementById('login-panel').style.display = 'none';
             document.getElementById('lobby-panel').style.display = 'block';
             socket = io();
-            socket.on('connect', () => { myId = socket.id; socket.emit('joinLobby', { name: document.getElementById('player-name-input').value, color: chosenColor }); });
-            socket.on('gameStarted', (data) => {
-                gamePlayers = data.players; turnOrder = data.turnOrder; currentTurnId = data.currentTurnId;
-                document.getElementById('lobby-panel').style.display = 'none';
-                document.getElementById('game-container').style.display = 'block';
-                for(let x=0; x<800; x++) terrain[x] = 400 + Math.sin(x*0.01)*50;
-                gameActive = true; startTurnTimer(); requestAnimationFrame(draw); checkAndRunAiTurn();
+            socket.emit('joinLobby', { name: document.getElementById('player-name-input').value, color: chosenColor });
+        }
+
+        function startGame() {
+            socket.emit('startConfiguredGame', { 
+                totalPlayers: document.getElementById('total-players-select').value, 
+                aiCount: document.getElementById('ai-players-select').value 
             });
-            socket.on('nextTurn', (data) => { currentTurnId = data.currentTurnId; startTurnTimer(); setTimeout(checkAndRunAiTurn, 500); });
-            socket.on('playerFired', (data) => { projectile = { x: gamePlayers[data.id].x, y: 380, vx: data.vx, vy: data.vy, owner: data.id }; });
         }
 
-        function startGameEngine() { socket.emit('startConfiguredGame', { totalPlayers: document.getElementById('total-players-select').value, aiCount: 1 }); }
-
-        function startTurnTimer() {
-            clearInterval(turnTimerInterval); turnSecondsLeft = 10;
-            turnTimerInterval = setInterval(() => {
-                if(!gameActive) return;
-                turnSecondsLeft--;
-                if(turnSecondsLeft <= 0) {
-                    clearInterval(turnTimerInterval);
-                    if(currentTurnId === myId) socket.emit('fire', { vx: 0, vy: 0, special: 'moved' });
-                    else socket.emit('aiFinishedTurn');
-                }
-            }, 1000);
-        }
-
-        function checkAndRunAiTurn() {
-            if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
-            setTimeout(() => {
-                if (currentTurnId === myId || !gameActive) return;
-                let target = Object.values(gamePlayers).find(p => !p.isAi);
-                let angle = (gamePlayers[currentTurnId].x > target.x) ? 135 : 45;
-                socket.emit('fire', { vx: Math.cos(angle)*5, vy: -5, wType: "normal" });
-            }, 500);
-        }
+        socket = io();
+        socket.on('gameStarted', (data) => {
+            gamePlayers = data.players;
+            document.getElementById('lobby-panel').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            gameActive = true;
+            draw();
+        });
 
         function draw() {
             if(!gameActive) return;
+            const ctx = document.getElementById('gameCanvas').getContext('2d');
             ctx.clearRect(0,0,800,500);
             ctx.fillStyle = '#3a2512'; ctx.fillRect(0, 400, 800, 100);
             for(let id in gamePlayers) {
                 ctx.fillStyle = gamePlayers[id].color;
                 ctx.fillRect(gamePlayers[id].x, 380, 20, 20);
             }
-            if(projectile) { projectile.x += projectile.vx; projectile.y += projectile.vy; ctx.fillStyle='red'; ctx.fillRect(projectile.x, projectile.y, 5, 5); }
             requestAnimationFrame(draw);
         }
     </script>
