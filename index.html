@@ -10,45 +10,60 @@
         canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; max-width: 95vw; height: auto; }
         .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 350px; }
         button { background-color: #ffcc00; color: #000; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; margin: 10px; cursor: pointer; border-radius: 5px; }
-        .color-dot { display: inline-block; width: 40px; height: 30px; margin: 5px; border: 2px solid #555; cursor: pointer; }
+        .color-dot { display: inline-block; width: 40px; height: 30px; margin: 5px; border: 2px solid #555; cursor: pointer; border-radius: 4px; }
         .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; }
-        .ui-bar { position: absolute; top: 10px; display: flex; gap: 10px; padding: 10px; }
-        .ui-panel { background: rgba(0,0,0,0.8); border: 1px solid #ffcc00; padding: 5px; font-size: 12px; }
+        .share-row { display: flex; gap: 5px; margin-top: 10px; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
     <div id="login-panel" class="panel">
-        <h2>טנקים נגד טנקים</h2>
-        <input type="text" id="player-name" value="צהובי" style="width:90%; padding:8px; margin-bottom:10px;">
+        <h2>📝 טנקים נגד טנקים</h2>
+        <input type="text" id="player-name" value="צהובי">
         <div id="color-grid">
-            <div class="color-dot selected" style="background:#ffcc00" onclick="chosenColor='#ffcc00'"></div>
-            <div class="color-dot" style="background:#ff3333" onclick="chosenColor='#ff3333'"></div>
-            <div class="color-dot" style="background:#00ff00" onclick="chosenColor='#00ff00'"></div>
-            <div class="color-dot" style="background:#33ccff" onclick="chosenColor='#33ccff'"></div>
-            <div class="color-dot" style="background:#ffffff" onclick="chosenColor='#ffffff'"></div>
-            <div class="color-dot" style="background:#222" onclick="chosenColor='#222'"></div>
+            <div class="color-dot selected" style="background:#ffcc00" onclick="selectColor(this, '#ffcc00')"></div>
+            <div class="color-dot" style="background:#ff3333" onclick="selectColor(this, '#ff3333')"></div>
+            <div class="color-dot" style="background:#00ff00" onclick="selectColor(this, '#00ff00')"></div>
+            <div class="color-dot" style="background:#33ccff" onclick="selectColor(this, '#33ccff')"></div>
+            <div class="color-dot" style="background:#ffffff" onclick="selectColor(this, '#ffffff')"></div>
+            <div class="color-dot" style="background:#111" onclick="selectColor(this, '#111')"></div>
         </div>
-        <button onclick="joinLobby()">התחבר</button>
+        <button onclick="joinLobby()">התחבר למשחק</button>
+        <div class="share-row">
+            <input type="text" id="share-link" readonly>
+            <button onclick="copyLink()">📋 העתק</button>
+        </div>
     </div>
 
     <div id="lobby-panel" class="panel" style="display:none;">
-        <h2>הגדרות זירה</h2>
+        <h2>⚙️ הגדרות זירה</h2>
         <select id="total-players"><option value="2">2 שחקנים</option><option value="4">4 שחקנים</option></select>
         <select id="ai-count"><option value="1">בוט אחד</option><option value="2">2 בוטים</option></select>
         <button onclick="startGame()">שגר משחק!</button>
     </div>
 
     <div id="game-container">
-        <div id="ui-bar" class="ui-bar"></div>
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
 
     <script>
-        let socket, gameActive = false, players = {}, chosenColor = '#ffcc00', currentTurnId = null;
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        let socket, gameActive = false, players = {}, chosenColor = '#ffcc00', myId = '';
+        
+        function selectColor(el, color) {
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+            el.classList.add('selected');
+            chosenColor = color;
+        }
+
+        function copyLink() {
+            document.getElementById('share-link').select();
+            document.execCommand('copy');
+            alert('הקישור הועתק!');
+        }
+
+        document.getElementById('share-link').value = window.location.origin;
 
         function joinLobby() {
             document.getElementById('login-panel').style.display = 'none';
@@ -64,18 +79,16 @@
         socket = io();
         socket.on('gameStarted', (data) => {
             players = data.players;
-            currentTurnId = data.currentTurnId;
             document.getElementById('lobby-panel').style.display = 'none';
             document.getElementById('game-container').style.display = 'block';
             gameActive = true;
             draw();
         });
 
+        // הבוט יורה מיידית בתור שלו כדי לא להיתקע
         socket.on('nextTurn', (data) => {
-            currentTurnId = data.currentTurnId;
-            if(players[currentTurnId].isAi) {
+            if(players[data.currentTurnId]?.isAi) {
                 setTimeout(() => {
-                    // ירי מיידי של המחשב כדי לא להיתקע
                     socket.emit('fire', { vx: (Math.random()-0.5)*10, vy: -5, wType: "normal" });
                 }, 800);
             }
@@ -83,16 +96,15 @@
 
         function draw() {
             if(!gameActive) return;
+            const ctx = document.getElementById('gameCanvas').getContext('2d');
             ctx.clearRect(0,0,800,500);
             ctx.fillStyle = '#3a2512'; ctx.fillRect(0, 400, 800, 100);
             for(let id in players) {
                 let p = players[id];
                 ctx.fillStyle = p.color;
-                // גוף הטנק
-                ctx.fillRect(p.x, 370, 30, 20);
-                // קנה תותח
+                ctx.fillRect(p.x, 370, 30, 20); // גוף
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(p.x + 10, 360, 10, 10);
+                ctx.fillRect(p.x + 10, 360, 10, 10); // תותח
             }
             requestAnimationFrame(draw);
         }
