@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>אדמה חרוכה - מהדורת 6 שחקנים ומחזור שמיים דינמי</title>
+    <title>טנקים נגד טנקים - מהדורת 6 שחקנים ומחזור שמיים דינמי</title>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
         #game-container { position: relative; display: none; }
@@ -47,8 +47,8 @@
 
     <!-- שלב 1: מסך רישום והתחברות לשחקן -->
     <div id="login-panel" class="panel">
-        <h2>📝 רישום שחקן זירה</h2>
-        <label>כינוי קרב:</value>
+        <h2>📝 טנקים נגד טנקים - רישום</h2>
+        <label>כינוי קרב:</label>
         <input type="text" id="player-name-input" value="צהובי">
         
         <label>בחר צבע מותג:</label>
@@ -64,9 +64,9 @@
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
     </div>
 
-    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים (רק למנהל החדר הראשון) -->
+    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים -->
     <div id="lobby-panel" class="panel" style="display:none;">
-        <h2>⚙️ הגדרות זירת קרב (עד 6 שחקנים)</h2>
+        <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
         <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
         
         <label>סה"כ שחקנים בזירה (שחקנים + מחשב):</label>
@@ -181,7 +181,6 @@ let aiLastSpecs = {};
 let aiLastXLand = null;
 let playerMovesLeft = 5;
 
-// מערכת מחזור יום ולילה דינמית (לפי תורות)
 let totalShotsFiredInGame = 0;
 
 let chosenColor = '#ffcc00';
@@ -274,7 +273,6 @@ function connectToLobby() {
         turnOrder = data.turnOrder;
         currentTurnId = data.currentTurnId;
         
-        // הגדרת סוגי טנקים ומאפיינים התחלתיים
         for(let id in gamePlayers) {
             let pType = gamePlayers[id].type || 'medium';
             gamePlayers[id].maxHp = TANK_TYPES[pType].maxHp;
@@ -283,7 +281,6 @@ function connectToLobby() {
             if(!aiLastSpecs[id]) aiLastSpecs[id] = { angle: id === myId ? 45 : 135, power: 55 };
         }
 
-        // הגרלת שטח ראשוני פעם אחת
         for (let x = 0; x < canvas.width; x++) {
             terrain[x] = 380 + Math.sin(x * 0.015) * 45 + Math.cos(x * 0.03) * 15;
         }
@@ -309,7 +306,7 @@ function connectToLobby() {
         playLaserSound();
         
         if(data.id === myId) stats.player.shots++; else stats.globalOther.shots++;
-        totalShotsFiredInGame++; // גורם להזזת השמש והשמיים
+        totalShotsFiredInGame++; 
         
         projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id, wType: data.wType || "normal", hasSplit: false };
     });
@@ -366,7 +363,7 @@ function rebuildTopUi() {
 function checkAndRunAiTurn() {
     if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
     
-    statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
+    statusDiv.innerText = `المחשب (${gamePlayers[currentTurnId].name}) מנתח مפה...`;
     statusDiv.style.color = "#ff3333";
 
     setTimeout(() => {
@@ -375,14 +372,12 @@ function checkAndRunAiTurn() {
         const ai = gamePlayers[currentTurnId];
         const aiSpecs = TANK_TYPES[ai.type];
         
-        // חיפוש אויב חי אקראי לירות עליו
         let targets = turnOrder.filter(id => id !== currentTurnId && gamePlayers[id] && gamePlayers[id].hp > 0);
         if(targets.length === 0) return;
         let targetPlayer = gamePlayers[targets[Math.floor(Math.random() * targets.length)]];
         
         let spec = aiLastSpecs[currentTurnId] || { angle: ai.x > targetPlayer.x ? 135 : 45, power: 55 };
         
-        // תיקון כוונות פשוט
         if (ai.x > targetPlayer.x) spec.angle = 120 + Math.random() * 30;
         else spec.angle = 30 + Math.random() * 30;
         
@@ -402,22 +397,20 @@ function checkAndRunAiTurn() {
     }, 1500);
 }
 
-// מנוע רינדור השמיים הדינמיים (מחזור יום ולילה לפי כמות יריות)
 function drawSkyAndCelestialBodies() {
-    // קביעת צבע הרקע לפי כמות היריות שבוצעו במשחק (כל 2 יריות שלב משתנה)
     let stage = Math.floor(totalShotsFiredInGame / 2) % 4;
     let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     
-    if (stage === 0) { // תחילת הבוקר - תכלת סגלגל רך
+    if (stage === 0) { 
         skyGradient.addColorStop(0, '#2c3e50');
         skyGradient.addColorStop(1, '#0c2461');
-    } else if (stage === 1) { // אמצע היום - תכלת בהיר של שמש עולה
+    } else if (stage === 1) { 
         skyGradient.addColorStop(0, '#3498db');
         skyGradient.addColorStop(1, '#87ceeb');
-    } else if (stage === 2) { // לקראת ערב - סגלגל כהה דמדומים
+    } else if (stage === 2) { 
         skyGradient.addColorStop(0, '#6f1573');
         skyGradient.addColorStop(1, '#2c3e50');
-    } else { // לילה עמוק - כחול כהה/שחור קוסמי
+    } else { 
         skyGradient.addColorStop(0, '#0f172a');
         skyGradient.addColorStop(1, '#020617');
     }
@@ -425,7 +418,6 @@ function drawSkyAndCelestialBodies() {
     ctx.fillStyle = skyGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ציור עננים קטנים ברקע בבוקר ובצהריים
     if (stage <= 1) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
         for (let i = 0; i < 4; i++) {
@@ -433,17 +425,15 @@ function drawSkyAndCelestialBodies() {
         }
     }
 
-    // ציור שמש או ירח זזים לפי השלבים
-    let progressFactor = (totalShotsFiredInGame % 2) * 0.5; // תנועה חלקה קטנה בתוך השלב
     let bodyX = canvas.width - ((totalShotsFiredInGame * 40) % (canvas.width + 100));
     
-    if (stage <= 1) { // ציור שמש קטנה מצד ימין שזזה שמאלה ונעלמת לקראת דמדומים
+    if (stage <= 1) { 
         ctx.save();
         ctx.shadowBlur = 25; ctx.shadowColor = "#ffaa00";
         ctx.beginPath(); ctx.arc(bodyX, 60, 16, 0, Math.PI * 2);
         ctx.fillStyle = "#ffcc00"; ctx.fill();
         ctx.restore();
-    } else { // ציור ירח שעולה מצד ימין וזז שמאלה בלילה וערב
+    } else { 
         ctx.save();
         ctx.shadowBlur = 15; ctx.shadowColor = "#fff";
         ctx.beginPath(); ctx.arc(bodyX, 70, 14, 0, Math.PI * 2);
@@ -481,7 +471,6 @@ function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
                     p.hp = p.maxHp; playRespawnSound();
                 }
             } else {
-                // בדיקת סוף משחק - האם נשאר רק שחקן אחד חי בכל המפה?
                 let activePlayers = turnOrder.filter(pid => gamePlayers[pid] && gamePlayers[pid].lives > 0);
                 if (activePlayers.length <= 1) {
                     let winnerName = activePlayers.length === 1 ? gamePlayers[activePlayers[0]].name : "אף אחד";
@@ -507,7 +496,7 @@ window.executeRespawn = function(type) {
 function triggerGameOver(winnerName) {
     gameActive = false;
     document.getElementById('game-over-screen').style.display = 'block';
-    document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה החרוכה! 🏆`;
+    document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה! 🏆`;
     
     document.getElementById('stat-shots-player').innerText = stats.player.shots;
     document.getElementById('stat-shots-ai').innerText = stats.globalOther.shots;
@@ -518,15 +507,12 @@ function triggerGameOver(winnerName) {
 }
 
 function draw() {
-    // קריאה למנוע השמיים, העננים, השמש והירח המשודרג
     drawSkyAndCelestialBodies();
     
-    // ציור שטח אדמה חום
     ctx.beginPath(); ctx.moveTo(0, canvas.height);
     for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x]);
     ctx.lineTo(canvas.width, canvas.height); ctx.fillStyle = '#3a2512'; ctx.fill();
 
-    // ציור טנקים בזירה
     for (let id in gamePlayers) {
         const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const tankY = terrain[Math.floor(p.x)];
         if (p.hp <= 0 && p.lives <= 0) continue;
@@ -550,7 +536,6 @@ function draw() {
         }
     }
 
-    // פגז מרכזי
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
         ctx.beginPath();
@@ -581,7 +566,6 @@ function draw() {
         }
     }
 
-    // פגזי פיצול קטנים
     for (let i = clusterProjectiles.length - 1; i >= 0; i--) {
         let cp = clusterProjectiles[i]; cp.vy += gravity; cp.x += cp.vx; cp.y += cp.vy;
         ctx.beginPath(); ctx.arc(cp.x, cp.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#ff6633'; ctx.fill();
@@ -592,7 +576,6 @@ function draw() {
         } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { clusterProjectiles.splice(i, 1); }
     }
 
-    // שמן נוזלי
     for (let i = oilDrops.length - 1; i >= 0; i--) {
         let od = oilDrops[i]; od.life--; od.vy += gravity; od.x += od.vx; od.y += od.vy;
         if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
@@ -621,7 +604,7 @@ window.addEventListener('keydown', (e) => {
     activeKeys[e.key] = true; 
     if (e.key === '1' || e.key === '2' || e.key === '3') {
         const keyNum = parseInt(e.key);
-        if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); updateTopUi(); }
+        if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); }
     }
 });
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
@@ -674,6 +657,7 @@ function updateStatusText() {
     }
 }
 
+function showGameLayout() { document.getElementById('menu').style.display = 'none'; document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-container').style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
 setInterval(handleGameControls, 50);
 </script>
 </body>
