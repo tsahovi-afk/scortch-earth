@@ -2,39 +2,70 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - לוח נתונים טקטי</title>
+    <title>טנקים נגד טנקים</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; background: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
-        #game-container { position: relative; display: none; }
-        canvas { border: 4px solid #ffcc00; background-color: #050510; display: block; max-width: 95vw; height: auto; }
         .panel { background: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 350px; }
-        button { background: #ffcc00; color: #000; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 10px 0; width: 100%; }
-        .tank-option { background: #333; border: 1px solid #555; padding: 15px; margin: 10px 0; border-radius: 5px; cursor: pointer; text-align: right; }
-        .tank-option:hover { border-color: #ffcc00; background: #444; }
-        input, select { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; background: #333; color: white; border: 1px solid #555; }
+        button { background: #ffcc00; color: #000; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 10px 0; width: 100%; }
+        .color-dot { display: inline-block; width: 45px; height: 35px; margin: 5px; border: 2px solid #555; cursor: pointer; border-radius: 4px; }
+        .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; transform: scale(1.1); }
+        .share-row { display: flex; gap: 5px; margin-top: 15px; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+        label { display: block; text-align: right; margin-bottom: 5px; font-weight: bold; }
+        #game-container { display: none; }
+        canvas { border: 4px solid #ffcc00; background-color: #050510; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
+    <!-- מסך פתיחה: שם, צבעים ולינק -->
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים</h2>
+        <label>כינוי קרב:</label>
         <input type="text" id="p-name" value="צהובי">
-        <button onclick="joinLobby()">התחבר</button>
+        
+        <label>בחר צבע מותג:</label>
+        <div id="color-grid">
+            <div class="color-dot selected" style="background:#ffcc00" onclick="selectColor(this, '#ffcc00')"></div>
+            <div class="color-dot" style="background:#ff3333" onclick="selectColor(this, '#ff3333')"></div>
+            <div class="color-dot" style="background:#00ff00" onclick="selectColor(this, '#00ff00')"></div>
+            <div class="color-dot" style="background:#33ccff" onclick="selectColor(this, '#33ccff')"></div>
+            <div class="color-dot" style="background:#ffffff" onclick="selectColor(this, '#ffffff')"></div>
+            <div class="color-dot" style="background:#222; border: 2px dashed #ffcc00" onclick="selectColor(this, '#222')"></div>
+        </div>
+        
+        <button onclick="joinLobby()">התחבר ללובי</button>
+        
+        <div class="share-row">
+            <input type="text" id="share-link" readonly>
+            <button onclick="copyLink()" style="width: auto;">📋</button>
+        </div>
     </div>
 
+    <!-- מסך הגדרות זירה -->
     <div id="lobby-panel" class="panel" style="display:none;">
-        <label>סה"כ שחקנים:</label>
-        <select id="total-players"><option value="2">2</option><option value="6">6</option></select>
+        <h2>⚙️ הגדרות זירה</h2>
+        <label>סה"כ שחקנים (2-6):</label>
+        <select id="total-players">
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            <option value="5">5</option><option value="6">6</option>
+        </select>
+        <label>כמות בוטים (0-5):</label>
+        <select id="ai-count">
+            <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+            <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+        </select>
         <button onclick="showTankSelection()">המשך לבחירת טנק</button>
     </div>
 
+    <!-- מסך בחירת טנק -->
     <div id="tank-panel" class="panel" style="display:none;">
         <h2>🚀 בחר דגם טנק</h2>
-        <div class="tank-option" onclick="chooseTank('medium')"><strong>טנק צייד</strong> (100 HP)</div>
-        <div class="tank-option" onclick="chooseTank('heavy')"><strong>טנק ממותה</strong> (150 HP)</div>
-        <div class="tank-option" onclick="chooseTank('light')"><strong>טנק זיקית</strong> (75 HP)</div>
+        <button onclick="chooseTank('medium')">טנק צייד (100 HP)</button>
+        <button onclick="chooseTank('heavy')">טנק ממותה (150 HP)</button>
+        <button onclick="chooseTank('light')">טנק זיקית (75 HP)</button>
     </div>
 
     <div id="game-container">
@@ -42,64 +73,42 @@
     </div>
 
     <script>
-        let socket, gameActive = false, players = {}, terrain = [], selectedTank = 'medium';
-        // מלאי נשקים בסיסי לכל טנק
-        let inventory = {
-            normal: { name: "פגז רגיל", ammo: Infinity },
-            cluster: { name: "פגז מתפצל", ammo: 3 },
-            oil: { name: "שמן נוזלי", ammo: 3 }
-        };
+        let socket, chosenColor = '#ffcc00';
+
+        // הגדרת לינק השיתוף
+        document.getElementById('share-link').value = window.location.origin;
+
+        function selectColor(el, color) {
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+            el.classList.add('selected');
+            chosenColor = color;
+        }
+
+        function copyLink() {
+            const input = document.getElementById('share-link');
+            input.select(); document.execCommand('copy'); alert('הלינק הועתק ללוח!');
+        }
 
         function joinLobby() {
             document.getElementById('login-panel').style.display = 'none';
             document.getElementById('lobby-panel').style.display = 'block';
             socket = io();
-            socket.emit('joinLobby', { name: document.getElementById('p-name').value });
+            socket.emit('joinLobby', { name: document.getElementById('p-name').value, color: chosenColor });
         }
 
-        function showTankSelection() { document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('tank-panel').style.display = 'block'; }
+        function showTankSelection() {
+            document.getElementById('lobby-panel').style.display = 'none';
+            document.getElementById('tank-panel').style.display = 'block';
+        }
 
         function chooseTank(type) {
-            selectedTank = type;
             document.getElementById('tank-panel').style.display = 'none';
-            socket.emit('startConfiguredGame', { totalPlayers: document.getElementById('total-players').value, tankType: selectedTank });
-        }
-
-        socket = io();
-        socket.on('gameStarted', (data) => {
-            players = data.players;
-            for(let x=0; x<800; x++) terrain[x] = 400 + Math.sin(x*0.02)*40;
             document.getElementById('game-container').style.display = 'block';
-            gameActive = true;
-            render();
-        });
-
-        function render() {
-            if(!gameActive) return;
-            const ctx = document.getElementById('gameCanvas').getContext('2d');
-            ctx.fillStyle = '#050510'; ctx.fillRect(0,0,800,500);
-            
-            ctx.fillStyle = '#3a2512';
-            ctx.beginPath(); ctx.moveTo(0, 500);
-            for(let x=0; x<800; x++) ctx.lineTo(x, terrain[x]);
-            ctx.lineTo(800, 500); ctx.fill();
-
-            for(let id in players) {
-                let p = players[id];
-                ctx.fillStyle = p.color;
-                ctx.fillRect(p.x, terrain[p.x]-20, 30, 20); // גוף
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(p.x + 10, terrain[p.x]-30, 10, 10); // תותח
-                
-                // לוח נתונים טקטי
-                ctx.fillStyle = '#ffcc00';
-                ctx.font = '12px monospace';
-                ctx.fillText(`חיים: ${p.hp || 100}/100`, p.x, terrain[p.x]-45);
-                ctx.fillText(`כוח: ${p.power || 50}`, p.x, terrain[p.x]-60);
-                ctx.fillText(`נשק: ${inventory.normal.name}`, p.x, terrain[p.x]-75);
-                ctx.fillText(`מחסנית: ${inventory.cluster.ammo}`, p.x, terrain[p.x]-90);
-            }
-            requestAnimationFrame(render);
+            socket.emit('startConfiguredGame', { 
+                totalPlayers: document.getElementById('total-players').value, 
+                aiCount: document.getElementById('ai-count').value,
+                tankType: type
+            });
         }
     </script>
 </body>
