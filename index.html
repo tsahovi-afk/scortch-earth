@@ -2,21 +2,31 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>אדמה חרוכה - תנועה טקטית, בחירת טנקים וסאונד</title>
+    <title>אדמה חרוכה - ארקייד 1990 עם חיים וסטטיסטיקות</title>
     <style>
-        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
         canvas { border: 2px solid #ffcc00; background-color: #050510; display: none; }
         #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; }
         #controls-info { margin-top: 5px; font-size: 14px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
         
-        .panel { background-color: #222; padding: 30px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; max-width: 500px; }
-        button { background-color: #ffcc00; color: #000; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; margin: 10px; cursor: pointer; border-radius: 5px; transition: 0.2s; }
+        .panel { background-color: #222; padding: 30px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; max-width: 500px; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
+        button { background-color: #ffcc00; color: #000; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; margin: 10px; cursor: pointer; border-radius: 5px; transition: 0.2s; box-shadow: 3px 3px 0px #997a00; }
         button:hover { background-color: #ffee55; transform: scale(1.05); }
+        button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #997a00; }
         
         #tank-select { display: none; }
         .tank-option { background: #333; border: 1px solid #555; padding: 15px; margin: 10px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
         .tank-option:hover { border-color: #ffcc00; background: #3c3c3c; }
         .tank-name { font-size: 18px; font-weight: bold; color: #ffcc00; margin-bottom: 5px; }
+
+        /* מסך סיום רטרו מעוצב */
+        #game-over-screen { display: none; position: absolute; z-index: 10; background-color: rgba(10, 10, 15, 0.95); border: 4px double #ffcc00; padding: 35px; border-radius: 0px; text-align: center; min-width: 320px; box-shadow: 0 0 30px #ff3333; }
+        .game-over-title { font-size: 32px; font-weight: bold; color: #ff3333; text-shadow: 2px 2px #000; letter-spacing: 2px; margin-bottom: 20px; }
+        .stats-table { width: 100%; margin: 20px 0; border-collapse: collapse; text-align: right; font-size: 15px; }
+        .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 8px; }
+        .stats-table td { padding: 8px; border-bottom: 1px solid #444; }
+        .btn-exit { background-color: #ff3333; color: #fff; box-shadow: 3px 3px 0px #990000; }
+        .btn-exit:hover { background-color: #ff5555; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -32,24 +42,62 @@
     <!-- תפריט בחירת טנקים -->
     <div id="tank-select" class="panel">
         <h2>בחר את דגם הטנק שלך</h2>
-        
         <div class="tank-option" onclick="selectTank('medium')">
             <div class="tank-name">🚀 טנק צייד (Medium)</div>
-            <div>מאוזן לכל משימה. חיים: 100% | גודל: בינוני</div>
+            <div>מאוזן לכל משימה. חיים: 100% | גודל: בינוני | מלאי: 3 טנקים</div>
         </div>
-        
         <div class="tank-option" onclick="selectTank('heavy')">
             <div class="tank-name">🐘 טנק ממותה (Heavy)</div>
-            <div>משוריין וכבד. חיים: 150% (150 HP) | גודל: רחב וחשוף</div>
+            <div>משוריין וכבד. חיים: 150% (150 HP) | גודל: רחב | מלאי: 3 טנקים</div>
         </div>
-        
         <div class="tank-option" onclick="selectTank('light')">
             <div class="tank-name">⚡ טנק זיקית (Light)</div>
-            <div>קטן וחמקמק. חיים: 75% (75 HP) | גודל: צר וקשה לפגיעה</div>
+            <div>קטן וחמקמק. חיים: 75% (75 HP) | גודל: צר | מלאי: 3 טנקים</div>
         </div>
     </div>
 
-    <h2 id="gameTitle" style="display:none;">אדמה חרוכה</h2>
+    <!-- מסך סיכום וסיום משחק רטרו -->
+    <div id="game-over-screen">
+        <div id="go-title" class="game-over-title">GAME OVER</div>
+        <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 20px;">צהובי ניצח את המערכה!</h3>
+        
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>סטטיסטיקת קרב</th>
+                    <th style="color: #ffcc00;">צהובי</th>
+                    <th style="color: #ff3333;">המחשב</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>פגזים שנורו</td>
+                    <td id="stat-shots-player">0</td>
+                    <td id="stat-shots-ai">0</td>
+                </tr>
+                <tr>
+                    <td>פגיעות ישירות/קרובות</td>
+                    <td id="stat-hits-player">0</td>
+                    <td id="stat-hits-ai">0</td>
+                </tr>
+                <tr>
+                    <td>אחוז דיוק ירי</td>
+                    <td id="stat-acc-player">0%</td>
+                    <td id="stat-acc-ai">0%</td>
+                </tr>
+                <tr>
+                    <td>צעדי תמרון ודלק</td>
+                    <td id="stat-moves-player">0</td>
+                    <td id="stat-moves-ai">0</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button onclick="restartGame()">🔄 משחק חדש</button>
+        <button class="btn-exit" onclick="backToMenu()">❌ יציאה לתפריט</button>
+    </div>
+
+    <h2 id="gameTitle" style="display:none; color: #ffcc00; margin: 5px 0 0 0; font-size: 20px;">אדמה חרוכה</h2>
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     <div id="status">טוען...</div>
     <div id="controls-info">
@@ -74,7 +122,13 @@ const gravity = 0.15;
 
 let aiLastSpecs = { angle: 135, power: 60 };
 let aiLastXLand = null;
-let playerMovesLeft = 5; // מונה צעדים לתור הנוכחי
+let playerMovesLeft = 5;
+
+// אובייקט לאיסוף נתונים סטטיסטיים
+let stats = {
+    player: { shots: 0, hits: 0, moves: 0 },
+    ai: { shots: 0, hits: 0, moves: 0 }
+};
 
 const TANK_TYPES = {
     medium: { width: 24, height: 12, maxHp: 100 },
@@ -125,29 +179,43 @@ function playMoveSound() {
     osc.start(); osc.stop(audioCtx.currentTime + 0.08);
 }
 
+function playRespawnSound() {
+    initAudio();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.4);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+}
+
 function playGameOverSound(win) {
     initAudio();
-    const now = audioCtx.currentTime; const notes = win ? [261.63, 329.63, 392.00, 523.25] : [392.00, 349.23, 311.13, 246.94];
+    const now = audioCtx.currentTime; const notes = win ? [261.63, 329.63, 392.00, 523.25, 659.25] : [392.00, 349.23, 311.13, 246.94, 196.00];
     notes.forEach((freq, index) => {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, now + index * 0.15);
+        osc.type = win ? 'triangle' : 'square'; osc.frequency.setValueAtTime(freq, now + index * 0.15);
         gain.gain.setValueAtTime(0.15, now + index * 0.15); gain.gain.exponentialRampToValueAtTime(0.01, now + index * 0.15 + 0.14);
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.start(now + index * 0.15); osc.stop(now + index * 0.15 + 0.14);
     });
 }
 
-function openTankSelection() { initAudio(); isAiMode = true; document.getElementById('menu').style.display = 'none'; document.getElementById('tank-select').style.display = 'block'; }
-function showGameLayout() { document.getElementById('menu').style.display = 'none'; document.getElementById('tank-select').style.display = 'none'; document.getElementById('gameTitle').style.display = 'block'; canvas.style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
+function openTankSelection() { initAudio(); isAiMode = true; document.getElementById('menu').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('tank-select').style.display = 'block'; }
+function showGameLayout() { document.getElementById('menu').style.display = 'none'; document.getElementById('tank-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('gameTitle').style.display = 'block'; canvas.style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
 
 window.selectTank = function(type) {
     showGameLayout();
     const aiTypes = ['medium', 'heavy', 'light'];
     const aiType = aiTypes[Math.floor(Math.random() * aiTypes.length)];
 
+    // איפוס סטטיסטיקות למשחק חדש
+    stats = { player: { shots: 0, hits: 0, moves: 0 }, ai: { shots: 0, hits: 0, moves: 0 } };
+
+    // הוספת שדה lives לטנקים (3 פסילות)
     gamePlayers = {
-        'local_player': { id: 'local_player', x: 150, color: '#ffcc00', name: 'צהובי', angle: 45, power: 50, type: type, hp: TANK_TYPES[type].maxHp, maxHp: TANK_TYPES[type].maxHp },
-        'ai_player': { id: 'ai_player', x: 650, color: '#ff3333', name: 'המחשב', angle: 135, power: 60, type: aiType, hp: TANK_TYPES[aiType].maxHp, maxHp: TANK_TYPES[aiType].maxHp }
+        'local_player': { id: 'local_player', x: 150, color: '#ffcc00', name: 'צהובי', angle: 45, power: 50, type: type, hp: TANK_TYPES[type].maxHp, maxHp: TANK_TYPES[type].maxHp, lives: 3 },
+        'ai_player': { id: 'ai_player', x: 650, color: '#ff3333', name: 'המחשב', angle: 135, power: 60, type: aiType, hp: TANK_TYPES[aiType].maxHp, maxHp: TANK_TYPES[aiType].maxHp, lives: 3 }
     };
     
     aiLastSpecs = { angle: 135, power: 60 }; aiLastXLand = null; playerMovesLeft = 5; currentTurnId = 'local_player'; gameActive = true;
@@ -156,19 +224,21 @@ window.selectTank = function(type) {
 
 window.startOnlineGame = function() {
     initAudio(); isAiMode = false; showGameLayout(); statusDiv.innerText = "מתחבר לשרת... שלח את הלינק לחבר!";
+    stats = { player: { shots: 0, hits: 0, moves: 0 }, ai: { shots: 0, hits: 0, moves: 0 } };
     socket = io();
     socket.on('init', (data) => { myId = data.id; if (data.side === 'right') myAngle = 135; });
     socket.on('startGame', (data) => {
         gamePlayers = data.players;
-        for(let id in gamePlayers) { gamePlayers[id].type = 'medium'; gamePlayers[id].hp = 100; gamePlayers[id].maxHp = 100; }
+        for(let id in gamePlayers) { gamePlayers[id].type = 'medium'; gamePlayers[id].hp = 100; gamePlayers[id].maxHp = 100; gamePlayers[id].lives = 3; }
         playerMovesLeft = 5; currentTurnId = data.turn; gameActive = true; updateStatusText();
     });
     socket.on('playerAimed', (data) => { if (gamePlayers[data.id]) { gamePlayers[data.id].angle = data.angle; gamePlayers[data.id].power = data.power; } });
     socket.on('playerFired', (data) => {
         const shootingTank = gamePlayers[data.id]; const tSpecs = TANK_TYPES[shootingTank.type]; playLaserSound();
+        if(data.id === myId) stats.player.shots++; else stats.ai.shots++;
         projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id };
     });
-    socket.on('playerMoved', (data) => { if (gamePlayers[data.id]) { gamePlayers[data.id].x = data.x; } });
+    socket.on('playerMoved', (data) => { if (gamePlayers[data.id]) { gamePlayers[data.id].x = data.x; if(data.id !== myId) stats.ai.moves++; } });
     socket.on('nextTurn', (data) => { currentTurnId = data.turn; playerMovesLeft = 5; setTimeout(() => { updateStatusText(); }, 1500); });
     socket.on('playerLeft', () => { gameActive = false; statusDiv.innerText = "השחקן השני התנתק. מחכה לשחקן חדש..."; });
     draw();
@@ -193,9 +263,9 @@ function runAiTurn() {
         const lastPlayerImpactDist = aiLastXLand !== null ? Math.abs(aiLastXLand - ai.x) : 999;
         if (ai.hp < (ai.maxHp * 0.5) && lastPlayerImpactDist < 60 && Math.random() < 0.4) {
             statusDiv.innerText = "המחשב מחליט לתמרן ולברוח!";
+            stats.ai.moves += 4;
             const dir = ai.x > me.x ? 1 : -1; 
             const steps = 3 + Math.floor(Math.random() * 3); 
-            
             for(let i=0; i<steps; i++) {
                 let nextX = ai.x + (dir * 6);
                 if (nextX > 50 && nextX < 750) ai.x = nextX;
@@ -223,6 +293,7 @@ function runAiTurn() {
 
         const fireRad = (targetAngle * Math.PI) / 180; const speed = targetPower * 0.12;
         playLaserSound();
+        stats.ai.shots++;
         projectile = { x: ai.x, y: terrain[ai.x] - aiSpecs.height, vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, owner: 'ai_player' };
 
         currentTurnId = 'local_player';
@@ -243,6 +314,32 @@ function updateStatusText() {
     }
 }
 
+// פונקציה שמציגה את מסך סיום המשחק הרשמי בסגנון רטרו
+function triggerGameOver(playerWon) {
+    gameActive = false;
+    
+    // מילוי הנתונים בחלון
+    document.getElementById('go-winner').innerText = playerWon ? "צהובי ניצח את המערכה! 🏆" : "המחשב ניצח את המערכה! 💀";
+    document.getElementById('go-title').innerText = playerWon ? "VICTORY" : "GAME OVER";
+    document.getElementById('go-title').style.color = playerWon ? "#00ff00" : "#ff3333";
+    document.getElementById('game-over-screen').style.shadowColor = playerWon ? "#00ff00" : "#ff3333";
+
+    document.getElementById('stat-shots-player').innerText = stats.player.shots;
+    document.getElementById('stat-shots-ai').innerText = stats.ai.shots;
+    document.getElementById('stat-hits-player').innerText = stats.player.hits;
+    document.getElementById('stat-hits-ai').innerText = stats.ai.hits;
+    document.getElementById('stat-moves-player').innerText = stats.player.moves;
+    document.getElementById('stat-moves-ai').innerText = stats.ai.moves;
+
+    const pAcc = stats.player.shots > 0 ? Math.floor((stats.player.hits / stats.player.shots) * 100) : 0;
+    const aiAcc = stats.ai.shots > 0 ? Math.floor((stats.ai.hits / stats.ai.shots) * 100) : 0;
+    document.getElementById('stat-acc-player').innerText = pAcc + "%";
+    document.getElementById('stat-acc-ai').innerText = aiAcc + "%";
+
+    playGameOverSound(playerWon);
+    document.getElementById('game-over-screen').style.display = 'block';
+}
+
 function checkExplosionDamage(craterX) {
     for (let id in gamePlayers) {
         const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const halfWidth = tSpecs.width / 2;
@@ -252,16 +349,33 @@ function checkExplosionDamage(craterX) {
 
         if (distanceToTank < 35) {
             const damage = Math.floor((1 - (distanceToTank / 35)) * 50);
-            if (damage > 0) p.hp = Math.max(0, p.hp - damage);
+            if (damage > 0) {
+                p.hp = Math.max(0, p.hp - damage);
+                // ספירת פגיעה מוצלחת בסטטיסטיקה
+                if (damage > 15) {
+                    if (id === 'ai_player') stats.player.hits++; 
+                    if (id === 'local_player' || id !== myId) stats.ai.hits++;
+                }
+            }
         }
     }
 
+    // ניהול הורדת חיים (Lives) ונוצרות מחדש (Respawn)
     for (let id in gamePlayers) {
-        if (gamePlayers[id].hp <= 0) {
-            gameActive = false;
-            if (id === myId) { statusDiv.innerText = "הטנק שלך הושמד! המחשב ניצח 💀"; statusDiv.style.color = "#ff3333"; playGameOverSound(false); }
-            else { statusDiv.innerText = "בום! השמדת את " + gamePlayers[id].name + "! 🎉"; statusDiv.style.color = "#00ff00"; playGameOverSound(true); }
-            break;
+        const p = gamePlayers[id];
+        if (p.hp <= 0) {
+            p.lives--; // ירידת חיים
+            
+            if (p.lives > 0) {
+                // נשארו חיים - הטנק נוצר מחדש במקום
+                p.hp = p.maxHp;
+                playRespawnSound();
+                statusDiv.innerText = "💥 " + p.name + " הושמד ואיבד חיים! נוצר מחדש... 💥";
+            } else {
+                // נגמרו כל 3 החיים - סיום משחק אמיתי
+                triggerGameOver(id !== 'local_player' && id === 'ai_player');
+                break;
+            }
         }
     }
 }
@@ -291,12 +405,19 @@ function draw() {
         ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); 
         ctx.restore();
 
-        // מד חיים
-        ctx.fillStyle = '#555'; ctx.fillRect(p.x - 25, tankY - tSpecs.height - 15, 50, 5);
-        ctx.fillStyle = p.hp > (p.maxHp * 0.4) ? '#00ff00' : '#ff3333'; ctx.fillRect(p.x - 25, tankY - tSpecs.height - 15, (p.hp / p.maxHp) * 50, 5);
+        // מד חיים (HP)
+        ctx.fillStyle = '#555'; ctx.fillRect(p.x - 25, tankY - tSpecs.height - 13, 50, 4);
+        ctx.fillStyle = p.hp > (p.maxHp * 0.4) ? '#00ff00' : '#ff3333'; ctx.fillRect(p.x - 25, tankY - tSpecs.height - 13, (p.hp / p.maxHp) * 50, 4);
         
-        ctx.font = "11px sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-        ctx.fillText(p.name + " (" + p.hp + " HP)", p.x, tankY - tSpecs.height - 22);
+        // ציור אייקונים של חיים (Lives) כטנקים קטנים מעל מד ה-HP
+        for (let l = 0; l < p.lives; l++) {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - 22 + (l * 16), tankY - tSpecs.height - 24, 10, 5);
+            ctx.fillRect(p.x - 20 + (l * 16), tankY - tSpecs.height - 27, 6, 3);
+        }
+
+        ctx.font = "10px sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+        ctx.fillText(p.name, p.x, tankY - tSpecs.height - 32);
     }
 
     // פגז באוויר
@@ -336,8 +457,8 @@ function handleGameControls() {
     if (activeKeys['Shift']) {
         if (playerMovesLeft > 0) {
             let nextX = me.x;
-            if (activeKeys['ArrowLeft'] || activeKeys['a']) { nextX = me.x - 6; playerMovesLeft--; activeKeys['ArrowLeft'] = false; activeKeys['a'] = false; changed = true; }
-            if (activeKeys['ArrowRight'] || activeKeys['d']) { nextX = me.x + 6; playerMovesLeft--; activeKeys['ArrowRight'] = false; activeKeys['d'] = false; changed = true; }
+            if (activeKeys['ArrowLeft'] || activeKeys['a']) { nextX = me.x - 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowLeft'] = false; activeKeys['a'] = false; changed = true; }
+            if (activeKeys['ArrowRight'] || activeKeys['d']) { nextX = me.x + 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowRight'] = false; activeKeys['d'] = false; changed = true; }
             
             if (nextX > 30 && nextX < canvas.width - 30) {
                 me.x = nextX;
@@ -371,6 +492,7 @@ function handleGameControls() {
         const tSpecs = TANK_TYPES[me.type];
         
         playLaserSound();
+        stats.player.shots++;
 
         if (isAiMode) {
             projectile = { x: me.x, y: terrain[Math.floor(me.x)] - tSpecs.height, vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'local_player' };
@@ -381,6 +503,21 @@ function handleGameControls() {
             socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed });
         }
     }
+}
+
+// פונקציות תפריטים וסיום
+window.restartGame = function() {
+    document.getElementById('game-over-screen').style.display = 'none';
+    openTankSelection();
+}
+
+window.backToMenu = function() {
+    document.getElementById('game-over-screen').style.display = 'none';
+    canvas.style.display = 'none';
+    statusDiv.style.display = 'none';
+    document.getElementById('controls-info').style.display = 'none';
+    document.getElementById('gameTitle').style.display = 'none';
+    document.getElementById('menu').style.display = 'block';
 }
 
 setInterval(handleGameControls, 50);
