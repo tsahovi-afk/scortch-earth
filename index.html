@@ -50,7 +50,6 @@
         .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 6px; }
         .stats-table td { padding: 6px; border-bottom: 1px solid #444; }
 
-        /* 📱 פאנל כפתורי מגע וירטואליים לסלולרי */
         #mobile-controls { display: none; width: 100%; max-width: 800px; justify-content: space-between; padding: 10px 20px; box-sizing: border-box; background: #151515; border-top: 2px solid #ffcc00; margin-top: auto; }
         .touch-group { display: grid; gap: 8px; }
         .left-dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 45px); }
@@ -66,7 +65,6 @@
 </head>
 <body>
 
-    <!-- שלב 1: מסך רישום והתחברות לשחקן -->
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים - רישום</h2>
         <label>כינוי קרב:</label>
@@ -93,7 +91,6 @@
         </div>
     </div>
 
-    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים -->
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
         <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
@@ -127,7 +124,6 @@
         <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
     </div>
 
-    <!-- זירת המשחק המרכזית -->
     <div id="game-container">
         <div id="respawn-select-overlay">
             <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
@@ -143,7 +139,6 @@
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
 
-    <!-- מסך סיכום -->
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
@@ -178,16 +173,13 @@
         <button onclick="location.reload()">🔄 משחק חדש</button>
     </div>
 
-    <!-- 📱 פאנל כפתורי מגע וירטואליים לסלולרי (מוסתר כברירת מחדל) -->
     <div id="mobile-controls">
-        <!-- ג'ויסטיק כיוון ותנועה (צד שמאל) -->
         <div class="touch-group left-dpad">
             <div></div><div class="touch-btn" id="m-up">▲</div><div></div>
             <div class="touch-btn" id="m-left">◀</div><div class="touch-btn" id="m-shift" style="font-size:12px;">SHIFT</div><div class="touch-btn" id="m-right">▶</div>
             <div></div><div class="touch-btn" id="m-down">▼</div><div></div>
         </div>
         
-        <!-- כפתורי החלפת נשק וירי (צד ימין) -->
         <div class="touch-group right-buttons">
             <div class="touch-btn" id="m-w1">1</div>
             <div class="touch-btn" id="m-w2">2</div>
@@ -481,6 +473,7 @@ function checkAndRunAiTurn() {
     statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
     statusDiv.style.color = "#ff3333";
 
+    // שינוי יסודי - הבוט לא מריץ לולאות מתוחכמות, הוא פשוט מחשב פעם אחת ויורה ישר
     setTimeout(() => {
         if (currentTurnId === myId || !gameActive || projectile) return;
         
@@ -489,25 +482,27 @@ function checkAndRunAiTurn() {
         if(targets.length === 0) return;
         let targetPlayer = gamePlayers[targets[Math.floor(Math.random() * targets.length)]];
         
-        let spec = aiLastSpecs[currentTurnId] || { angle: ai.x > targetPlayer.x ? 135 : 45, power: 55 };
+        // הגדרת זווית ירי פשוטה מבוססת מיקום יחסית (חסינת לופים)
+        let targetAngle = ai.x > targetPlayer.x ? 135 : 45;
+        // הוספת סטייה אקראית קטנה בשביל האתגר
+        targetAngle += (Math.random() - 0.5) * 20; 
         
-        if (ai.x > targetPlayer.x) spec.angle = 120 + Math.random() * 30;
-        else spec.angle = 30 + Math.random() * 30;
-        
-        spec.power = 40 + (Math.abs(ai.x - targetPlayer.x) * 0.05) + (Math.random() - 0.5) * 8;
-        spec.power = Math.max(25, Math.min(95, spec.power));
-        
-        aiLastSpecs[currentTurnId] = spec;
+        let targetPower = 40 + (Math.abs(ai.x - targetPlayer.x) * 0.06);
+        targetPower = Math.max(30, Math.min(90, targetPower));
+
+        ai.angle = targetAngle;
+        ai.power = targetPower;
+
         let aiWeaponType = "normal";
         if (Math.random() < 0.25) aiWeaponType = "cluster";
         else if (Math.random() < 0.15) aiWeaponType = "oil";
 
-        const fireRad = (spec.angle * Math.PI) / 180;
-        const speed = spec.power * 0.12;
+        const fireRad = (targetAngle * Math.PI) / 180;
+        const speed = targetPower * 0.12;
         
         clearInterval(turnTimerInterval); 
         socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
-    }, 1500);
+    }, 1200);
 }
 
 function drawSkyAndCelestialBodies() {
@@ -648,7 +643,7 @@ function draw() {
                 const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
                 if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
                     p.hp = Math.max(0, p.hp - 4); rebuildTopUi();
-                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(p.lives > 0) { if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; } else { let alive = turnOrder.filter(pid => gamePlayers[pid].lives > 0); if(alive.length <= 1) triggerGameOver(alive.length === 1 ? gamePlayers[alive[0]].name : "אף אחד"); } }
+                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; }
                     od.life = 0; break;
                 }
             }
@@ -668,10 +663,7 @@ function endTurnWithMovement() { clearInterval(turnTimerInterval); socket.emit('
 let activeKeys = {};
 window.addEventListener('keydown', (e) => { 
     activeKeys[e.key] = true; 
-    if (e.key === '1' || e.key === '2' || e.key === '3') { 
-        const keyNum = parseInt(e.key); 
-        if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } 
-    }
+    if (e.key === '1' || e.key === '2' || e.key === '3') { const keyNum = parseInt(e.key); if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } }
 });
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
@@ -729,64 +721,32 @@ function showGameLayout() {
     statusDiv.style.display = 'block'; 
     document.getElementById('controls-info').style.display = 'block'; 
     
-    // זיהוי והדלקת פאנל כפתורי מגע אם מדובר במכשיר סלולרי
     if (window.innerHeight < 600 || window.innerWidth < 800 || /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
         document.getElementById('mobile-controls').style.display = 'flex';
-        document.getElementById('controls-info').style.display = 'none'; // העלמת כיתוב מקלדת
+        document.getElementById('controls-info').style.display = 'none'; 
     }
 }
 
-// 📱 מערכת האזנה ולוגיקה לכפתורי המגע בסלולרי
 function setupMobileControls() {
     const triggerKey = (key, state) => { activeKeys[key] = state; };
     const setupBtn = (id, actionDown, actionUp) => {
-        const btn = document.getElementById(id);
-        if (!btn) return;
+        const btn = document.getElementById(id); if (!btn) return;
         btn.addEventListener('touchstart', (e) => { e.preventDefault(); actionDown(); });
         if (actionUp) btn.addEventListener('touchend', (e) => { e.preventDefault(); actionUp(); });
     };
-
-    // חצים וזוויות
     setupBtn('m-up', () => { triggerKey('ArrowUp', true); }, () => { triggerKey('ArrowUp', false); });
     setupBtn('m-down', () => { triggerKey('ArrowDown', true); }, () => { triggerKey('ArrowDown', false); });
-    
-    // שליטה כפולה - עוצמה או נסיעה (לפי כפתור ה-Shift)
-    setupBtn('m-left', () => {
-        if(activeKeys['Shift']) { triggerKey('ArrowLeft', true); }
-        else { triggerKey('ArrowLeft', true); }
-    }, () => { triggerKey('ArrowLeft', false); });
-
-    setupBtn('m-right', () => {
-        if(activeKeys['Shift']) { triggerKey('ArrowRight', true); }
-        else { triggerKey('ArrowRight', true); }
-    }, () => { triggerKey('ArrowRight', false); });
-
-    // כפתור ה-SHIFT הווירטואלי (מצב לחוץ/משוחרר)
+    setupBtn('m-left', () => { triggerKey('ArrowLeft', true); }, () => { triggerKey('ArrowLeft', false); });
+    setupBtn('m-right', () => { triggerKey('ArrowRight', true); }, () => { triggerKey('ArrowRight', false); });
     const sBtn = document.getElementById('m-shift');
-    if(sBtn) {
-        sBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if(activeKeys['Shift']) {
-                activeKeys['Shift'] = false; sBtn.classList.remove('btn-active-toggle');
-            } else {
-                activeKeys['Shift'] = true; sBtn.classList.add('btn-active-toggle');
-            }
-        });
-    }
-
-    // בחירת סוגי נשק (1, 2, 3)
+    if(sBtn) { sBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(activeKeys['Shift']) { activeKeys['Shift'] = false; sBtn.classList.remove('btn-active-toggle'); } else { activeKeys['Shift'] = true; sBtn.classList.add('btn-active-toggle'); } }); }
     setupBtn('m-w1', () => { selectedWeaponKey = 1; playMoveSound(); rebuildTopUi(); });
     setupBtn('m-w2', () => { selectedWeaponKey = 2; playMoveSound(); rebuildTopUi(); });
     setupBtn('m-w3', () => { selectedWeaponKey = 3; playMoveSound(); rebuildTopUi(); });
-
-    // כפתור ירייה
     setupBtn('m-fire', () => { executeWeaponFire(); });
 }
 
-window.onload = function() { 
-    initializeShareLink(); 
-    setupMobileControls(); 
-};
+window.onload = function() { initializeShareLink(); setupMobileControls(); };
 setInterval(handleGameControls, 50);
 </script>
 </body>
