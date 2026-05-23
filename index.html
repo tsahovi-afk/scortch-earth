@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - מהדורת 6 שחקנים עם טיימר 10 שניות</title>
+    <title>טנקים נגד טנקים - מהדורת 6 שחקנים עם טיימר אטום ל-AI</title>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
         #game-container { position: relative; display: none; }
@@ -28,11 +28,6 @@
         button:hover { background-color: #ffee55; transform: scale(1.03); }
         button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px #997a00; }
         
-        .color-picker-grid { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
-        .color-dot { width: 40px; height: 30px; border: 2px solid #555; cursor: pointer; border-radius: 4px; }
-        .color-dot.selected { border-color: #fff; box-shadow: 0 0 8px #fff; }
-
-        /* אלמנט תיבת שיתוף קישור מקוצר */
         .share-container { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555; display: flex; flex-direction: column; align-items: center; }
         .share-label { font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold; text-align: center; }
         .share-row { display: flex; width: 100%; gap: 5px; }
@@ -72,7 +67,6 @@
 
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
 
-        <!-- תיבת קישור מקוצר עם לחצן העתקה מהירה -->
         <div class="share-container">
             <div class="share-label">🔗 שלח לחבר כדי שישחק איתך אונליין:</div>
             <div class="share-row">
@@ -219,18 +213,15 @@ let myAngle = 45;
 let myPower = 50;
 let audioCtx = null;
 
-// פונקציה שמייצרת ומציגה את הקישור המקוצר באופן אוטומטי
 function initializeShareLink() {
     const linkField = document.getElementById('share-link-field');
     if (linkField) {
-        // לוקח את הכתובת הנוכחית ומוריד את ה-http:// או https:// כדי שיהיה קצר ונקי
         let cleanUrl = window.location.href.replace(/(^\w+:|^)\/\//, '');
-        if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1); // מחיקת סלאש מיותר בסוף
+        if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
         linkField.value = cleanUrl;
     }
 }
 
-// פונקציית העתקה מהירה ללוח בלחיצת כפתור
 window.copyGameUrl = function() {
     const fullUrl = window.location.href;
     navigator.clipboard.writeText(fullUrl).then(() => {
@@ -238,8 +229,6 @@ window.copyGameUrl = function() {
         btn.innerText = "✓ הועתק!";
         btn.style.color = "#00ff00";
         btn.style.borderColor = "#00ff00";
-        
-        // החזרת הכפתור למצב רגיל אחרי 2 שניות
         setTimeout(() => {
             btn.innerText = "📋 העתק";
             btn.style.color = "#ffcc00";
@@ -295,12 +284,10 @@ function pickColor(element, color) {
 function connectToLobby() {
     initAudio();
     const pName = document.getElementById('player-name-input').value || 'צהובי';
-    
     document.getElementById('login-panel').style.display = 'none';
     document.getElementById('lobby-panel').style.display = 'block';
     
     socket = io();
-
     socket.on('connect', () => {
         myId = socket.id;
         socket.emit('joinLobby', { name: pName, color: chosenColor });
@@ -402,8 +389,10 @@ function startTurnTimer() {
     }, 1000);
 }
 
+// מנגנון האיפוס המשופר: יעבוד אך ורק אם השחקן הנוכחי הוא אנושי!
 function resetTurnTimerOnAim() {
-    if (currentTurnId === myId && gameActive && !projectile) {
+    if (gameActive && !projectile && currentTurnId === myId) {
+        // המחשב חסום מלהיכנס לכאן, השעון שלו יישאר אטום וקשיח
         turnSecondsLeft = 10;
         updateTimerDisplay();
     }
@@ -422,12 +411,7 @@ function startGameEngine() {
     const totalPlayers = document.getElementById('total-players-select').value;
     const aiCount = document.getElementById('ai-players-select').value;
     const startTank = document.getElementById('start-tank-type').value;
-    
-    socket.emit('startConfiguredGame', {
-        totalPlayers: totalPlayers,
-        aiCount: aiCount,
-        type: startTank
-    });
+    socket.emit('startConfiguredGame', { totalPlayers: totalPlayers, aiCount: aiCount, type: startTank });
 }
 
 function rebuildTopUi() {
@@ -442,12 +426,10 @@ function rebuildTopUi() {
     turnOrder.forEach(id => {
         const p = gamePlayers[id];
         if (!p) return;
-        
         const box = document.createElement('div');
         box.className = 'ui-panel-box';
         if (id === currentTurnId) box.classList.add('active-turn-box');
         box.style.borderColor = p.color;
-        
         box.innerHTML = `
             <h3 style="color:${p.color}">${p.name}</h3>
             <div>HP: ${p.hp}/${p.maxHp}</div>
@@ -495,45 +477,20 @@ function drawSkyAndCelestialBodies() {
     let stage = Math.floor(totalShotsFiredInGame / 2) % 4;
     let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     
-    if (stage === 0) { 
-        skyGradient.addColorStop(0, '#2c3e50');
-        skyGradient.addColorStop(1, '#0c2461');
-    } else if (stage === 1) { 
-        skyGradient.addColorStop(0, '#3498db');
-        skyGradient.addColorStop(1, '#87ceeb');
-    } else if (stage === 2) { 
-        skyGradient.addColorStop(0, '#6f1573');
-        skyGradient.addColorStop(1, '#2c3e50');
-    } else { 
-        skyGradient.addColorStop(0, '#0f172a');
-        skyGradient.addColorStop(1, '#020617');
-    }
+    if (stage === 0) { skyGradient.addColorStop(0, '#2c3e50'); skyGradient.addColorStop(1, '#0c2461'); } 
+    else if (stage === 1) { skyGradient.addColorStop(0, '#3498db'); skyGradient.addColorStop(1, '#87ceeb'); } 
+    else if (stage === 2) { skyGradient.addColorStop(0, '#6f1573'); skyGradient.addColorStop(1, '#2c3e50'); } 
+    else { skyGradient.addColorStop(0, '#0f172a'); skyGradient.addColorStop(1, '#020617'); }
     
-    ctx.fillStyle = skyGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     if (stage <= 1) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        for (let i = 0; i < 4; i++) {
-            ctx.beginPath(); ctx.arc(100 + i*200, 80, 20, 0, Math.PI*2); ctx.arc(120 + i*200, 75, 25, 0, Math.PI*2); ctx.arc(140 + i*200, 80, 18, 0, Math.PI*2); ctx.fill();
-        }
+        for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(100 + i*200, 80, 20, 0, Math.PI*2); ctx.arc(120 + i*200, 75, 25, 0, Math.PI*2); ctx.arc(140 + i*200, 80, 18, 0, Math.PI*2); ctx.fill(); }
     }
-
     let bodyX = canvas.width - ((totalShotsFiredInGame * 40) % (canvas.width + 100));
-    
-    if (stage <= 1) { 
-        ctx.save();
-        ctx.shadowBlur = 25; ctx.shadowColor = "#ffaa00";
-        ctx.beginPath(); ctx.arc(bodyX, 60, 16, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffcc00"; ctx.fill();
-        ctx.restore();
-    } else { 
-        ctx.save();
-        ctx.shadowBlur = 15; ctx.shadowColor = "#fff";
-        ctx.beginPath(); ctx.arc(bodyX, 70, 14, 0, Math.PI * 2);
-        ctx.fillStyle = "#e2e8f0"; ctx.fill();
-        ctx.restore();
-    }
+    if (stage <= 1) { ctx.save(); ctx.shadowBlur = 25; ctx.shadowColor = "#ffaa00"; ctx.beginPath(); ctx.arc(bodyX, 60, 16, 0, Math.PI * 2); ctx.fillStyle = "#ffcc00"; ctx.fill(); ctx.restore(); } 
+    else { ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#fff"; ctx.beginPath(); ctx.arc(bodyX, 70, 14, 0, Math.PI * 2); ctx.fillStyle = "#e2e8f0"; ctx.fill(); ctx.restore(); }
 }
 
 function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
@@ -556,52 +513,24 @@ function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
     for (let id in gamePlayers) {
         const p = gamePlayers[id];
         if (p.hp <= 0 && p.lives > 0) {
-            p.lives--;
-            rebuildTopUi();
+            p.lives--; rebuildTopUi();
             if (p.lives > 0) {
-                if (id === myId) {
-                    handlePlayerDeath(); 
-                } else {
-                    p.hp = p.maxHp; playRespawnSound();
-                }
+                if (id === myId) handlePlayerDeath(); else { p.hp = p.maxHp; playRespawnSound(); }
             } else {
                 let activePlayers = turnOrder.filter(pid => gamePlayers[pid] && gamePlayers[pid].lives > 0);
                 if (activePlayers.length <= 1) {
                     let winnerName = activePlayers.length === 1 ? gamePlayers[activePlayers[0]].name : "אף אחד";
-                    triggerGameOver(winnerName);
-                    break;
+                    triggerGameOver(winnerName); break;
                 }
             }
         }
     }
 }
 
-function handlePlayerDeath() {
-    clearInterval(turnTimerInterval); 
-    document.getElementById('respawn-select-overlay').style.display = 'flex';
-}
+function handlePlayerDeath() { clearInterval(turnTimerInterval); document.getElementById('respawn-select-overlay').style.display = 'flex'; }
+window.executeRespawn = function(type) { document.getElementById('respawn-select-overlay').style.display = 'none'; const p = gamePlayers[myId]; p.type = type; p.hp = TANK_TYPES[type].maxHp; p.maxHp = TANK_TYPES[type].maxHp; playRespawnSound(); rebuildTopUi(); startTurnTimer(); }
 
-window.executeRespawn = function(type) {
-    document.getElementById('respawn-select-overlay').style.display = 'none';
-    const p = gamePlayers[myId];
-    p.type = type; p.hp = TANK_TYPES[type].maxHp; p.maxHp = TANK_TYPES[type].maxHp;
-    playRespawnSound(); rebuildTopUi();
-    startTurnTimer(); 
-}
-
-function triggerGameOver(winnerName) {
-    gameActive = false;
-    clearInterval(turnTimerInterval);
-    document.getElementById('game-over-screen').style.display = 'block';
-    document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה! 🏆`;
-    
-    document.getElementById('stat-shots-player').innerText = stats.player.shots;
-    document.getElementById('stat-shots-ai').innerText = stats.globalOther.shots;
-    document.getElementById('stat-hits-player').innerText = stats.player.hits;
-    document.getElementById('stat-hits-ai').innerText = stats.globalOther.hits;
-    document.getElementById('stat-moves-player').innerText = stats.player.moves;
-    document.getElementById('stat-moves-ai').innerText = stats.globalOther.moves;
-}
+function triggerGameOver(winnerName) { gameActive = false; clearInterval(turnTimerInterval); document.getElementById('game-over-screen').style.display = 'block'; document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה! 🏆`; document.getElementById('stat-shots-player').innerText = stats.player.shots; document.getElementById('stat-shots-ai').innerText = stats.globalOther.shots; document.getElementById('stat-hits-player').innerText = stats.player.hits; document.getElementById('stat-hits-ai').innerText = stats.globalOther.hits; document.getElementById('stat-moves-player').innerText = stats.player.moves; document.getElementById('stat-moves-ai').innerText = stats.globalOther.moves; }
 
 function draw() {
     if (!gameActive) return;
@@ -615,18 +544,14 @@ function draw() {
         const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const tankY = terrain[Math.floor(p.x)];
         if (p.hp <= 0 && p.lives <= 0) continue;
         
-        ctx.save();
-        ctx.fillStyle = '#1e1e1e'; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - 4, tSpecs.width, 4); 
+        ctx.save(); ctx.fillStyle = '#1e1e1e'; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - 4, tSpecs.width, 4); 
         ctx.fillStyle = p.color; ctx.fillRect(p.x - (tSpecs.width / 2) + 2, tankY - tSpecs.height, tSpecs.width - 4, tSpecs.height - 3); 
-        
         ctx.beginPath(); ctx.arc(p.x, tankY - tSpecs.height + 1, tSpecs.width / 4, Math.PI, 0); ctx.fillStyle = '#fff'; ctx.fill(); 
 
         const angleToUse = id === myId ? myAngle : (p.angle || (p.x > 400 ? 135 : 45));
         const rad = (angleToUse * Math.PI) / 180;
-        ctx.beginPath(); ctx.moveTo(p.x, tankY - tSpecs.height);
-        ctx.lineTo(p.x + Math.cos(rad) * (tSpecs.width * 0.7), (tankY - tSpecs.height) - Math.sin(rad) * (tSpecs.width * 0.7));
-        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); 
-        ctx.restore();
+        ctx.beginPath(); ctx.moveTo(p.x, tankY - tSpecs.height); ctx.lineTo(p.x + Math.cos(rad) * (tSpecs.width * 0.7), (tankY - tSpecs.height) - Math.sin(rad) * (tSpecs.width * 0.7));
+        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); ctx.restore();
 
         if (id === currentTurnId && gameActive && id === myId) {
             ctx.font = "bold 11px monospace"; ctx.fillStyle = "#ffcc00"; ctx.textAlign = "center";
@@ -636,9 +561,7 @@ function draw() {
 
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
-        ctx.beginPath();
-        ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff3333'; ctx.fill();
+        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2); ctx.fillStyle = '#ff3333'; ctx.fill();
 
         if (!projectile.hasSplit && projectile.vy > 0.2 && projectile.wType === 'cluster') {
             projectile.hasSplit = true;
@@ -648,17 +571,14 @@ function draw() {
 
         if (projectile) {
             if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
-                const craterX = Math.floor(projectile.x);
-                playExplosionSound();
+                const craterX = Math.floor(projectile.x); playExplosionSound();
                 for (let x = craterX - 25; x <= craterX + 25; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 25*25 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
                 checkExplosionDamage(craterX); 
                 let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
-                projectile = null; 
-                if (wasAi) socket.emit('aiFinishedTurn');
+                projectile = null; if (wasAi) socket.emit('aiFinishedTurn');
             } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) { 
                 let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
-                projectile = null; 
-                if (wasAi) socket.emit('aiFinishedTurn');
+                projectile = null; if (wasAi) socket.emit('aiFinishedTurn');
             }
         }
     }
@@ -669,35 +589,19 @@ function draw() {
         if (cp.x >= 0 && cp.x < canvas.width && cp.y >= terrain[Math.floor(cp.x)]) {
             const craterX = Math.floor(cp.x); playExplosionSound();
             for (let x = craterX - 12; x <= craterX + 12; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 12*12 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
-            checkExplosionDamage(craterX, 22, 18); 
-            let ownerId = cp.owner;
-            clusterProjectiles.splice(i, 1);
-            if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
-                socket.emit('aiFinishedTurn');
-            }
-        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { 
-            let ownerId = cp.owner;
-            clusterProjectiles.splice(i, 1); 
-            if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
-                socket.emit('aiFinishedTurn');
-            }
-        }
+            checkExplosionDamage(craterX, 22, 18); let ownerId = cp.owner; clusterProjectiles.splice(i, 1);
+            if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { let ownerId = cp.owner; clusterProjectiles.splice(i, 1); if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn'); }
     }
-
     requestAnimationFrame(draw);
 }
 
-function endTurnWithMovement() {
-    socket.emit('fire', { vx: 0, vy: 0, special: 'moved' }); 
-}
+function endTurnWithMovement() { clearInterval(turnTimerInterval); socket.emit('fire', { vx: 0, vy: 0, special: 'moved' }); }
 
 let activeKeys = {};
 window.addEventListener('keydown', (e) => { 
     activeKeys[e.key] = true; 
-    if (e.key === '1' || e.key === '2') {
-        const keyNum = parseInt(e.key);
-        if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); }
-    }
+    if (e.key === '1' || e.key === '2') { const keyNum = parseInt(e.key); if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } }
 });
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
@@ -721,42 +625,24 @@ function handleGameControls() {
         if (activeKeys['ArrowLeft']) { myPower = Math.max(1, myPower - 0.5); changed = true; resetTurnTimerOnAim(); }
     }
 
-    if (changed) {
-        updateStatusText();
-        if (!activeKeys['Shift']) socket.emit('updateAim', { angle: myAngle, power: myPower });
-    }
+    if (changed) { updateStatusText(); if (!activeKeys['Shift']) socket.emit('updateAim', { angle: myAngle, power: myPower }); }
 
     if (activeKeys[' ']) {
-        activeKeys[' '] = false;
-        const activeWeapon = playerInventory[selectedWeaponKey];
-        if (activeWeapon.ammo <= 0) return;
+        activeKeys[' '] = false; const activeWeapon = playerInventory[selectedWeaponKey]; if (activeWeapon.ammo <= 0) return;
         if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
-
-        clearInterval(turnTimerInterval); 
-        const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
-        playLaserSound(); rebuildTopUi();
-        socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
+        clearInterval(turnTimerInterval); const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
+        playLaserSound(); rebuildTopUi(); socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
     }
 }
 
 function updateStatusText() {
     if (!gameActive) return;
-    if (currentTurnId === myId) {
-        statusDiv.innerText = `התור שלך! (עוצמה: ${Math.floor(myPower)} | זווית: ${myAngle}° | נשק: ${playerInventory[selectedWeaponKey].name} | דלק: ${playerMovesLeft}/5)`;
-        statusDiv.style.color = "#ffcc00";
-    } else {
-        const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב";
-        statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333";
-    }
+    if (currentTurnId === myId) { statusDiv.innerText = `התור שלך! (עוצמה: ${Math.floor(myPower)} | זווית: ${myAngle}° | נשק: ${playerInventory[selectedWeaponKey].name} | דלק: ${playerMovesLeft}/5)`; statusDiv.style.color = "#ffcc00"; } 
+    else { const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב"; statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333"; }
 }
 
 function showGameLayout() { document.getElementById('login-panel').style.display = 'none'; document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-container').style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
-
-// הרצת הפונקציה אוטומטית ברגע שהדף נפתח כדי להציג את הקישור המקוצר
-window.onload = function() {
-    initializeShareLink();
-};
-
+window.onload = function() { initializeShareLink(); };
 setInterval(handleGameControls, 50);
 </script>
 </body>
