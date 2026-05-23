@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - בחירת דגם</title>
+    <title>טנקים נגד טנקים - לוח נתונים טקטי</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; background: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
@@ -12,38 +12,24 @@
         button { background: #ffcc00; color: #000; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 10px 0; width: 100%; }
         .tank-option { background: #333; border: 1px solid #555; padding: 15px; margin: 10px 0; border-radius: 5px; cursor: pointer; text-align: right; }
         .tank-option:hover { border-color: #ffcc00; background: #444; }
-        .color-dot { display: inline-block; width: 40px; height: 30px; margin: 3px; border: 2px solid #555; cursor: pointer; }
-        .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; }
         input, select { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; background: #333; color: white; border: 1px solid #555; }
-        label { display: block; text-align: right; margin-bottom: 5px; font-weight: bold; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-    <!-- מסך רישום -->
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים</h2>
         <input type="text" id="p-name" value="צהובי">
-        <div>
-            <div class="color-dot selected" style="background:#ffcc00" onclick="selectColor(this, '#ffcc00')"></div>
-            <div class="color-dot" style="background:#ff3333" onclick="selectColor(this, '#ff3333')"></div>
-            <div class="color-dot" style="background:#00ff00" onclick="selectColor(this, '#00ff00')"></div>
-        </div>
         <button onclick="joinLobby()">התחבר</button>
     </div>
 
-    <!-- מסך הגדרות -->
     <div id="lobby-panel" class="panel" style="display:none;">
-        <h2>⚙️ הגדרות זירה</h2>
         <label>סה"כ שחקנים:</label>
         <select id="total-players"><option value="2">2</option><option value="6">6</option></select>
-        <label>בוטים:</label>
-        <select id="ai-count"><option value="1">1</option><option value="5">5</option></select>
         <button onclick="showTankSelection()">המשך לבחירת טנק</button>
     </div>
 
-    <!-- מסך בחירת טנק -->
     <div id="tank-panel" class="panel" style="display:none;">
         <h2>🚀 בחר דגם טנק</h2>
         <div class="tank-option" onclick="chooseTank('medium')"><strong>טנק צייד</strong> (100 HP)</div>
@@ -56,34 +42,27 @@
     </div>
 
     <script>
-        let socket, gameActive = false, players = {}, terrain = [], chosenColor = '#ffcc00', selectedTank = 'medium';
-        
-        function selectColor(el, color) {
-            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
-            el.classList.add('selected');
-            chosenColor = color;
-        }
+        let socket, gameActive = false, players = {}, terrain = [], selectedTank = 'medium';
+        // מלאי נשקים בסיסי לכל טנק
+        let inventory = {
+            normal: { name: "פגז רגיל", ammo: Infinity },
+            cluster: { name: "פגז מתפצל", ammo: 3 },
+            oil: { name: "שמן נוזלי", ammo: 3 }
+        };
 
         function joinLobby() {
             document.getElementById('login-panel').style.display = 'none';
             document.getElementById('lobby-panel').style.display = 'block';
             socket = io();
-            socket.emit('joinLobby', { name: document.getElementById('p-name').value, color: chosenColor });
+            socket.emit('joinLobby', { name: document.getElementById('p-name').value });
         }
 
-        function showTankSelection() {
-            document.getElementById('lobby-panel').style.display = 'none';
-            document.getElementById('tank-panel').style.display = 'block';
-        }
+        function showTankSelection() { document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('tank-panel').style.display = 'block'; }
 
         function chooseTank(type) {
             selectedTank = type;
             document.getElementById('tank-panel').style.display = 'none';
-            socket.emit('startConfiguredGame', { 
-                totalPlayers: document.getElementById('total-players').value, 
-                aiCount: document.getElementById('ai-count').value,
-                tankType: selectedTank
-            });
+            socket.emit('startConfiguredGame', { totalPlayers: document.getElementById('total-players').value, tankType: selectedTank });
         }
 
         socket = io();
@@ -108,9 +87,17 @@
             for(let id in players) {
                 let p = players[id];
                 ctx.fillStyle = p.color;
-                ctx.fillRect(p.x, terrain[p.x]-20, 30, 20);
+                ctx.fillRect(p.x, terrain[p.x]-20, 30, 20); // גוף
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(p.x + 10, terrain[p.x]-30, 10, 10);
+                ctx.fillRect(p.x + 10, terrain[p.x]-30, 10, 10); // תותח
+                
+                // לוח נתונים טקטי
+                ctx.fillStyle = '#ffcc00';
+                ctx.font = '12px monospace';
+                ctx.fillText(`חיים: ${p.hp || 100}/100`, p.x, terrain[p.x]-45);
+                ctx.fillText(`כוח: ${p.power || 50}`, p.x, terrain[p.x]-60);
+                ctx.fillText(`נשק: ${inventory.normal.name}`, p.x, terrain[p.x]-75);
+                ctx.fillText(`מחסנית: ${inventory.cluster.ammo}`, p.x, terrain[p.x]-90);
             }
             requestAnimationFrame(render);
         }
