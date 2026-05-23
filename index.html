@@ -8,7 +8,6 @@
         #game-container { position: relative; display: none; }
         canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; }
         
-        /* לוח בקרה עליון מובנה במסגרת המשחק */
         .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; font-family: monospace; }
         .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 10px 15px; border-radius: 4px; min-width: 180px; box-shadow: 0 0 10px rgba(255, 204, 0, 0.2); }
         .ui-player { text-align: right; color: #ffcc00; }
@@ -24,7 +23,6 @@
         button:hover { background-color: #ffee55; transform: scale(1.05); }
         button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #997a00; }
         
-        /* חלונות בחירה וסיום */
         #tank-select { display: none; }
         .tank-option { background: #333; border: 1px solid #555; padding: 12px; margin: 10px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
         .tank-option:hover { border-color: #ffcc00; background: #3c3c3c; }
@@ -44,14 +42,12 @@
 </head>
 <body>
 
-    <!-- תפריט ראשי -->
     <div id="menu" class="panel">
         <h2>אדמה חרוכה - בחר מצב משחק</h2>
         <button onclick="openTankSelection()">🤖 משחק נגד המחשב</button>
         <button onclick="startOnlineGame()">🌐 משחק אונליין נגד חבר</button>
     </div>
 
-    <!-- תפריט בחירת טנקים תחילת משחק -->
     <div id="tank-select" class="panel">
         <h2>בחר את דגם הטנק שלך</h2>
         <div class="tank-option" onclick="selectTank('medium')">
@@ -68,9 +64,7 @@
         </div>
     </div>
 
-    <!-- זירת המשחק המרכזית -->
     <div id="game-container">
-        <!-- חלון בחירת טנק בזמן מוות (Respawn) מובנה מעל הזירה -->
         <div id="respawn-select-overlay" style="display: none;">
             <div class="panel" style="max-width: 400px; border-color: #ff3333;">
                 <h3 style="color: #ff3333; margin-top: 0;">💥 הטנק שלך נהרס! 💥</h3>
@@ -81,16 +75,13 @@
             </div>
         </div>
 
-        <!-- לוח ממשק עליון מפוצל ימין ושמאל -->
         <div class="ui-bar">
-            <!-- שמאל: צהובי -->
             <div class="ui-panel-box ui-player">
                 <h3 id="ui-p1-name">צהובי</h3>
                 <div id="ui-p1-hp">HP: 100/100</div>
                 <div id="ui-p1-lives">טנקים במלאי: 🔴🔴🔴</div>
                 <div id="ui-p1-weapon" style="color: #fff; font-weight: bold; margin-top: 5px;">נשק: פגז רגיל (∞)</div>
             </div>
-            <!-- ימין: המחשב -->
             <div class="ui-panel-box ui-ai" style="border-color: #ff3333;">
                 <h3 id="ui-p2-name">המחשב</h3>
                 <div id="ui-p2-hp">HP: 100/100</div>
@@ -102,7 +93,6 @@
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
 
-    <!-- מסך סיכום וסטטיסטיקות -->
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 20px;">צהובי ניצח את המערכה!</h3>
@@ -163,15 +153,15 @@ let gameActive = false;
 let currentTurnId = null;
 let gamePlayers = {};
 let projectile = null;
-let clusterProjectiles = []; // מערך לפגזים הקטנים של נשק 2
-let oilDrops = []; // מערך לטיפות השמן הגולשות של נשק 3
+let clusterProjectiles = []; 
+let oilDrops = []; 
 const gravity = 0.15;
 
 let aiLastSpecs = { angle: 135, power: 60 };
 let aiLastXLand = null;
 let playerMovesLeft = 5;
+let aiIsThinking = false; // מנעול בולאני חדש למניעת תור כפול למחשב
 
-// מערך נשקים ומלאי של השחקן
 let playerInventory = {
     1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
     2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
@@ -262,6 +252,7 @@ window.selectTank = function(type) {
     stats = { player: { shots: 0, hits: 0, moves: 0 }, ai: { shots: 0, hits: 0, moves: 0 } };
     playerInventory = { 1: { name: "פגז רגיל", ammo: Infinity, type: "normal" }, 2: { name: "פגז מתפצל", ammo: 3, type: "cluster" }, 3: { name: "שמן נוזלי", ammo: 3, type: "oil" } };
     selectedWeaponKey = 1;
+    aiIsThinking = false;
 
     for (let x = 0; x < canvas.width; x++) {
         terrain[x] = 380 + Math.sin(x * 0.01) * 50 + Math.cos(x * 0.03) * 15;
@@ -301,14 +292,12 @@ window.startOnlineGame = function() {
 function updateTopUi() {
     if (!gamePlayers['local_player']) return;
     
-    // צהובי (שמאל)
     const p1 = gamePlayers['local_player'];
     document.getElementById('ui-p1-hp').innerText = `HP: ${p1.hp}/${p1.maxHp}`;
     document.getElementById('ui-p1-lives').innerText = "טנקים במלאי: " + "🔴".repeat(p1.lives);
     const ammoText = playerInventory[selectedWeaponKey].ammo === Infinity ? "∞" : playerInventory[selectedWeaponKey].ammo;
     document.getElementById('ui-p1-weapon').innerText = `נשק: ${playerInventory[selectedWeaponKey].name} (${ammoText})`;
 
-    // המחשב (ימין)
     const p2 = gamePlayers['ai_player'];
     if (p2) {
         document.getElementById('ui-p2-hp').innerText = `HP: ${p2.hp}/${p2.maxHp}`;
@@ -320,6 +309,7 @@ function updateTopUi() {
 function endTurnWithMovement() {
     if (isAiMode) {
         currentTurnId = 'ai_player';
+        aiIsThinking = false; // וידוא שחרור מנעול לפני תחילת תור מחשב
         setTimeout(() => { updateStatusText(); }, 1500);
     } else {
         socket.emit('fire', { vx: 0, vy: 0, special: 'moved' }); 
@@ -327,12 +317,17 @@ function endTurnWithMovement() {
 }
 
 function runAiTurn() {
-    if (!gameActive) return;
+    if (!gameActive || aiIsThinking) return; // הגנה אטומה - אם הוא כבר חושב, תעצור מיד ולא תפעיל פעם שנייה
+    aiIsThinking = true; // נעילת המנעול הבלעדי של המחשב
+
     statusDiv.innerText = "המחשב מנתח נתונים..."; statusDiv.style.color = "#ff3333";
 
     setTimeout(() => {
-        const me = gamePlayers['local_player']; const ai = gamePlayers['ai_player']; const aiSpecs = TANK_TYPES[ai.type];
+        if (!gameActive) { aiIsThinking = false; return; }
         
+        const me = gamePlayers['local_player']; const ai = gamePlayers['ai_player']; const aiSpecs = TANK_TYPES[ai.type];
+        if (!ai || ai.hp <= 0) { aiIsThinking = false; return; }
+
         const lastPlayerImpactDist = aiLastXLand !== null ? Math.abs(aiLastXLand - ai.x) : 999;
         if (ai.hp < (ai.maxHp * 0.5) && lastPlayerImpactDist < 60 && Math.random() < 0.4) {
             statusDiv.innerText = "המחשב מחליט לתמרן ולברוח!";
@@ -340,6 +335,7 @@ function runAiTurn() {
             const dir = ai.x > me.x ? 1 : -1; const steps = 3 + Math.floor(Math.random() * 3); 
             for(let i=0; i<steps; i++) { let nextX = ai.x + (dir * 6); if (nextX > 50 && nextX < 750) ai.x = nextX; }
             playMoveSound(); currentTurnId = 'local_player'; playerMovesLeft = 5; updateTopUi();
+            aiIsThinking = false; // שחרור המנעול כי התור עבר לשחקן באופן רשמי
             setTimeout(() => { updateStatusText(); }, 1500); return;
         }
 
@@ -354,7 +350,6 @@ function runAiTurn() {
             const distance = Math.abs(me.x - ai.x); targetPower = 45 + (distance * 0.05);
         }
 
-        // הגרלת סוג נשק למחשב אם יש לו מלאי
         let aiWeaponType = "normal";
         if (ai.inventory[2] > 0 && Math.random() < 0.3) { aiWeaponType = "cluster"; ai.inventory[2]--; }
         else if (ai.inventory[3] > 0 && Math.random() < 0.2) { aiWeaponType = "oil"; ai.inventory[3]--; }
@@ -368,7 +363,7 @@ function runAiTurn() {
         projectile = { x: ai.x, y: terrain[ai.x] - aiSpecs.height, vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, owner: 'ai_player', wType: aiWeaponType, hasSplit: false };
 
         currentTurnId = 'local_player'; playerMovesLeft = 5; updateTopUi();
-        setTimeout(() => { updateStatusText(); }, 1500);
+        // המנעול משתחרר רק ברגע שהפגז פוגע באדמה בתוך לולאת ה-draw, כדי למנוע ירי נוסף בזמן הטיסה!
     }, 1500);
 }
 
@@ -386,6 +381,7 @@ function updateStatusText() {
 
 function triggerGameOver(playerWon) {
     gameActive = false;
+    aiIsThinking = false;
     document.getElementById('game-over-screen').style.display = 'block';
     document.getElementById('go-winner').innerText = playerWon ? "צהובי ניצח את המערכה! 🏆" : "המחשב ניצח את המערכה! 💀";
     document.getElementById('go-title').innerText = playerWon ? "VICTORY" : "GAME OVER";
@@ -394,7 +390,7 @@ function triggerGameOver(playerWon) {
     document.getElementById('stat-shots-player').innerText = stats.player.shots;
     document.getElementById('stat-shots-ai').innerText = stats.ai.shots;
     document.getElementById('stat-hits-player').innerText = stats.player.hits;
-    document.getElementById('stat-hits-ai').innerText = stats.ai.hits;
+    document.getElementById('stat-hits-ai').innerText = stats.ai.aim || stats.ai.hits;
     document.getElementById('stat-moves-player').innerText = stats.player.moves;
     document.getElementById('stat-moves-ai').innerText = stats.ai.moves;
 
@@ -405,7 +401,6 @@ function triggerGameOver(playerWon) {
     playGameOverSound(playerWon);
 }
 
-// מנגנון פתיחת חלון בחירה מובנה במוות
 function handlePlayerDeath() {
     gameActive = false;
     document.getElementById('respawn-select-overlay').style.display = 'flex';
@@ -450,9 +445,8 @@ function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
             updateTopUi();
             if (p.lives > 0) {
                 if (id === 'local_player') {
-                    handlePlayerDeath(); // פתיחת תפריט הבחירה לשחקן
+                    handlePlayerDeath(); 
                 } else {
-                    // המחשב בוחר אקראית דגם חדש
                     const types = ['medium','heavy','light'];
                     p.type = types[Math.floor(Math.random()*3)];
                     p.hp = TANK_TYPES[p.type].maxHp;
@@ -493,18 +487,16 @@ function draw() {
         ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); 
         ctx.restore();
 
-        // הדפסת מד הכוח בלבד מעל ראש הטנק
         if (id === myId && gameActive && currentTurnId === myId) {
             ctx.font = "bold 11px monospace"; ctx.fillStyle = "#ffcc00"; ctx.textAlign = "center";
             ctx.fillText("POWER: " + Math.floor(myPower), p.x, tankY - tSpecs.height - 10);
         }
     }
 
-    // 1. פגז מרכזי באוויר
+    // 1. פגז מרכזי
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
         
-        // גרפיקת פגז אליפטי לנשק 3, עיגול לנשקים 1 ו-2
         ctx.beginPath();
         if(projectile.wType === 'oil') {
             ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
@@ -513,27 +505,23 @@ function draw() {
         }
         ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
 
-        // זיהוי שיא הגובה בפרבולה (כאשר המהירות האנכית vy הופכת לשלילית/יורדת)
         if (!projectile.hasSplit && projectile.vy > 0.2) {
-            // מפצל לנשק 2 (פגז מתפצל)
             if (projectile.wType === 'cluster') {
                 projectile.hasSplit = true;
                 for (let i = -2; i <= 1; i++) {
                     clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
                 }
-                projectile = null; // השמדת הפגז המרכזי
+                projectile = null; 
             }
-            // מפצל לנשק 3 (שמן נוזלי)
             else if (projectile.wType === 'oil') {
                 projectile.hasSplit = true;
                 for (let i = 0; i < 6; i++) {
-                    oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner });
+                    oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner, life: 150 });
                 }
                 projectile = null;
             }
         }
 
-        // פגיעה של הפגז המרכזי
         if (projectile) {
             if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
                 const craterX = Math.floor(projectile.x);
@@ -545,14 +533,17 @@ function draw() {
                         terrain[x] = Math.min(480, terrain[x] + depth);
                     }
                 }
-                checkExplosionDamage(craterX); projectile = null;
+                checkExplosionDamage(craterX); 
+                projectile = null;
+                aiIsThinking = false; // שחרור רשמי של המנעול - הפגז של המחשב פגע בקרקע והסתיים הסיבוב!
             } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) {
                 projectile = null;
+                aiIsThinking = false; // שחרור מנעול למקרה שהפגז עף אל מחוץ למסך
             }
         }
     }
 
-    // 2. ניהול וציור פגזי הפיצול (נשק 2 קטנים)
+    // 2. פגזי פיצול
     for (let i = clusterProjectiles.length - 1; i >= 0; i--) {
         let cp = clusterProjectiles[i];
         cp.vy += gravity; cp.x += cp.vx; cp.y += cp.vy;
@@ -567,55 +558,55 @@ function draw() {
                     terrain[x] = Math.min(480, terrain[x] + depth);
                 }
             }
-            checkExplosionDamage(craterX, 22, 18); // נזק קטן יותר לפגז מפוצל
+            checkExplosionDamage(craterX, 22, 18); 
             clusterProjectiles.splice(i, 1);
+            if(clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile) aiIsThinking = false;
         } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) {
             clusterProjectiles.splice(i, 1);
+            if(clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile) aiIsThinking = false;
         }
     }
 
-    // 3. ניהול וציור שמן נוזלי גולש (נשק 3)
+    // 3. שמן נוזלי
     for (let i = oilDrops.length - 1; i >= 0; i--) {
         let od = oilDrops[i];
+        od.life--; 
+
         od.vy += gravity; od.x += od.vx; od.y += od.vy;
 
-        // ברגע שהשמן נוגע באדמה, הוא מתחיל לזרום ולגלוש לצדדים
         if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
             od.y = terrain[Math.floor(od.x)];
             
-            // חישוב כיוון הגלישה לפי שיפוע האדמה סביבו
             let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)];
             let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
             
-            if (leftSlope > rightSlope) { od.vx = 1.5; } // ירידה ימינה
-            else if (rightSlope > leftSlope) { od.vx = -1.5; } // ירידה שמאלה
-            else { od.vx = (Math.random() - 0.5) * 2; } // שטח ישר
+            if (leftSlope > rightSlope) { od.vx = 1.5; } 
+            else if (rightSlope > leftSlope) { od.vx = -1.5; } 
+            else { od.vx = (Math.random() - 0.5) * 1.5; } 
             
             od.x += od.vx;
-            od.vy = 0; // נשאר צמוד לקרקע
+            od.vy = 0; 
             
-            // בדיקה אם השמן נוגע ישירות באחד הטנקים בזמן הגלישה
             for (let id in gamePlayers) {
                 const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
                 if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
-                    p.hp = Math.max(0, p.hp - 4); // נזק שריפה מתמשך קטן לכל טיפה
+                    p.hp = Math.max(0, p.hp - 4); 
                     if (p.hp <= 0 && gameActive) {
                         p.lives--; updateTopUi();
                         if(p.lives > 0) { if(id === 'local_player') handlePlayerDeath(); else { p.hp=p.maxHp; playRespawnSound(); } }
                         else triggerGameOver(id !== 'local_player');
                     }
-                    oilDrops.splice(i, 1);
+                    od.life = 0; 
                     break;
                 }
             }
         }
 
-        // ציור טיפת השמן הזורחת
         ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
 
-        // מחיקה אם עף מהמסך או סיים לזרום
-        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height) {
+        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height || od.life <= 0) {
             oilDrops.splice(i, 1);
+            if(clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile) aiIsThinking = false;
         }
     }
 
@@ -626,7 +617,6 @@ let activeKeys = {};
 window.addEventListener('keydown', (e) => { 
     activeKeys[e.key] = true; 
     
-    // החלפת נשקים במחסנית [1, 2, 3]
     if (e.key === '1' || e.key === '2' || e.key === '3') {
         const keyNum = parseInt(e.key);
         if (playerInventory[keyNum]) {
@@ -639,7 +629,8 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
 function handleGameControls() {
-    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
+    // הוספת הגנה קשוחה למקלדת - אם השרת/מחשב בתהליך חשיבה או שיש קליעים, השחקן חסום מלבצע פעולות תור
+    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0 || aiIsThinking) return;
 
     const me = gamePlayers[myId];
     let changed = false;
@@ -678,7 +669,6 @@ function handleGameControls() {
     if (activeKeys[' ']) {
         activeKeys[' '] = false;
         
-        // בדיקת מלאי תחמושת לנשק הנבחר
         const activeWeapon = playerInventory[selectedWeaponKey];
         if (activeWeapon.ammo <= 0) {
             statusDiv.innerText = `⚠️ נגמרה התחמושת עבור ${activeWeapon.name}! בחר נשק אחר [1]`;
@@ -686,7 +676,6 @@ function handleGameControls() {
             return;
         }
 
-        // הורדת מלאי במידה ולא מדובר בפגז אינסופי
         if (activeWeapon.ammo !== Infinity) {
             activeWeapon.ammo--;
         }
