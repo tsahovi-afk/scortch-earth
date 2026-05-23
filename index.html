@@ -215,6 +215,7 @@ let oilDrops = [];
 const gravity = 0.15;
 
 let aiLastSpecs = {};
+let aiLastXLand = null;
 let playerMovesLeft = 5;
 let totalShotsFiredInGame = 0;
 let chosenColor = '#ffcc00';
@@ -263,6 +264,8 @@ window.copyGameUrl = function() {
             btn.style.color = "#ffcc00";
             btn.style.borderColor = "#ffcc00";
         }, 2000);
+    }).catch(err => {
+        console.error("שגיאה בהעתקת הקישור: ", err);
     });
 }
 
@@ -404,6 +407,9 @@ function startTurnTimer() {
         
         if (turnSecondsLeft <= 0) {
             clearInterval(turnTimerInterval);
+            statusDiv.innerText = "⏱️ נגמר הזמן! התור עובר אוטומטית...";
+            statusDiv.style.color = "#ff3333";
+            
             if (currentTurnId === myId) {
                 endTurnWithMovement(); 
             } else if (gamePlayers[currentTurnId] && gamePlayers[currentTurnId].isAi) {
@@ -424,6 +430,8 @@ function updateTimerDisplay() {
     const timerBox = document.getElementById('turn-timer-display');
     if (timerBox) {
         timerBox.innerText = turnSecondsLeft;
+        timerBox.style.color = turnSecondsLeft <= 3 ? "#ff0000" : "#ffcc00";
+        timerBox.style.borderColor = turnSecondsLeft <= 3 ? "#ff0000" : "#ffcc00";
     }
 }
 
@@ -437,6 +445,7 @@ function startGameEngine() {
 function rebuildTopUi() {
     const uiBar = document.getElementById('dynamic-ui-bar');
     uiBar.innerHTML = '';
+    
     const timerElement = document.createElement('div');
     timerElement.id = 'turn-timer-display';
     timerElement.innerText = turnSecondsLeft;
@@ -449,46 +458,65 @@ function rebuildTopUi() {
         box.className = 'ui-panel-box';
         if (id === currentTurnId) box.classList.add('active-turn-box');
         box.style.borderColor = p.color;
-        box.innerHTML = `<h3 style="color:${p.color}">${p.name}</h3><div>HP: ${p.hp}/${p.maxHp}</div>`;
+        box.innerHTML = `
+            <h3 style="color:${p.color}">${p.name}</h3>
+            <div>HP: ${p.hp}/${p.maxHp}</div>
+            <div>טנקים: ${"🔴".repeat(Math.max(0, p.lives))}</div>
+        `;
         uiBar.appendChild(box);
     });
 }
 
 function checkAndRunAiTurn() {
-    if (!gameActive || currentTurnId === null || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
+    if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
     
-    // בוט יורה בוודאות לאחר 2 שניות מתחילת התור שלו
-    setTimeout(() => {
-        if (!gameActive || currentTurnId === null || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
-        
-        const ai = gamePlayers[currentTurnId];
-        let target = Object.values(gamePlayers).find(p => p.id !== ai.id && p.hp > 0);
-        if (!target) return;
-        
-        const angle = ai.x > target.x ? 135 : 45;
-        const power = 60;
-        const rad = (angle * Math.PI) / 180;
-        const speed = power * 0.12;
-        
-        socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: 'normal' });
-    }, 2000);
+    // Logic: Aim and Fire
+    const ai = gamePlayers[currentTurnId];
+    let target = Object.values(gamePlayers).find(p => p.id !== ai.id && p.hp > 0);
+    if (!target) return;
+    
+    let angle = ai.x > target.x ? 135 : 45;
+    let power = 60;
+    const rad = (angle * Math.PI) / 180;
+    const speed = power * 0.12;
+    
+    socket.emit('fire', { 
+        vx: Math.cos(rad) * speed, 
+        vy: -Math.sin(rad) * speed, 
+        wType: 'normal' 
+    });
 }
 
 function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
     for (let id in gamePlayers) {
         const p = gamePlayers[id]; if (p.hp <= 0) continue;
         const tSpecs = TANK_TYPES[p.type]; const halfWidth = tSpecs.width / 2;
-        let dist = Math.abs(craterX - p.x);
-        if (dist < radius) {
-            const damage = Math.floor((1 - (dist / radius)) * customMaxDamage);
-            if (damage > 0) p.hp = Math.max(0, p.hp - damage);
+        let distanceToTank = 0;
+        if (craterX < p.x - halfWidth) distanceToTank = (p.x - halfWidth) - craterX;
+        else if (craterX > p.x + halfWidth) distanceToTank = craterX - (p.x + halfWidth);
+
+        if (distanceToTank < radius) {
+            const damage = Math.floor((1 - (distanceToTank / radius)) * customMaxDamage);
+            if (damage > 0) {
+                p.hp = Math.max(0, p.hp - damage);
+                if (id === myId) stats.globalOther.hits++; else if(p.isAi) stats.player.hits++;
+            }
         }
     }
+
     for (let id in gamePlayers) {
         const p = gamePlayers[id];
         if (p.hp <= 0 && p.lives > 0) {
             p.lives--; rebuildTopUi();
-            if (p.lives > 0) { if (id === myId) handlePlayerDeath(); else { p.hp = p.maxHp; playRespawnSound(); } }
+            if (p.lives > 0) {
+                if (id === myId) handlePlayerDeath(); else { p.hp = p.maxHp; playRespawnSound(); }
+            } else {
+                let activePlayers = turnOrder.filter(pid => gamePlayers[pid] && gamePlayers[pid].lives > 0);
+                if (activePlayers.length <= 1) {
+                    let winnerName = activePlayers.length === 1 ? gamePlayers[activePlayers[0]].name : "אף אחד";
+                    triggerGameOver(winnerName); break;
+                }
+            }
         }
     }
 }
@@ -496,11 +524,11 @@ function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
 function handlePlayerDeath() { clearInterval(turnTimerInterval); document.getElementById('respawn-select-overlay').style.display = 'flex'; }
 window.executeRespawn = function(type) { document.getElementById('respawn-select-overlay').style.display = 'none'; const p = gamePlayers[myId]; p.type = type; p.hp = TANK_TYPES[type].maxHp; p.maxHp = TANK_TYPES[type].maxHp; playRespawnSound(); rebuildTopUi(); startTurnTimer(); }
 
-function triggerGameOver(winnerName) { gameActive = false; clearInterval(turnTimerInterval); document.getElementById('game-over-screen').style.display = 'block'; document.getElementById('go-winner').innerText = `${winnerName} ניצח! 🏆`; }
+function triggerGameOver(winnerName) { gameActive = false; clearInterval(turnTimerInterval); document.getElementById('game-over-screen').style.display = 'block'; document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה! 🏆`; document.getElementById('stat-shots-player').innerText = stats.player.shots; document.getElementById('stat-shots-ai').innerText = stats.globalOther.shots; document.getElementById('stat-hits-player').innerText = stats.player.hits; document.getElementById('stat-hits-ai').innerText = stats.globalOther.hits; document.getElementById('stat-moves-player').innerText = stats.player.moves; document.getElementById('stat-moves-ai').innerText = stats.globalOther.moves; }
 
 function draw() {
     if (!gameActive) return;
-    ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawSkyAndCelestialBodies();
     
     ctx.beginPath(); ctx.moveTo(0, canvas.height);
     for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x]);
@@ -509,66 +537,194 @@ function draw() {
     for (let id in gamePlayers) {
         const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const tankY = terrain[Math.floor(p.x)];
         if (p.hp <= 0 && p.lives <= 0) continue;
-        ctx.fillStyle = p.color; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - tSpecs.height, tSpecs.width, tSpecs.height); 
+        
+        ctx.save(); ctx.fillStyle = '#1e1e1e'; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - 4, tSpecs.width, 4); 
+        ctx.fillStyle = p.color; ctx.fillRect(p.x - (tSpecs.width / 2) + 2, tankY - tSpecs.height, tSpecs.width - 4, tSpecs.height - 3); 
+        ctx.beginPath(); ctx.arc(p.x, tankY - tSpecs.height + 1, tSpecs.width / 4, Math.PI, 0); ctx.fillStyle = '#fff'; ctx.fill(); 
+
+        const angleToUse = id === myId ? myAngle : (p.angle || (p.x > 400 ? 135 : 45));
+        const rad = (angleToUse * Math.PI) / 180;
+        ctx.beginPath(); ctx.moveTo(p.x, tankY - tSpecs.height); ctx.lineTo(p.x + Math.cos(rad) * (tSpecs.width * 0.7), (tankY - tSpecs.height) - Math.sin(rad) * (tSpecs.width * 0.7));
+        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); ctx.restore();
+
+        if (id === currentTurnId && gameActive && id === myId) {
+            ctx.font = "bold 11px monospace"; ctx.fillStyle = "#ffcc00"; ctx.textAlign = "center";
+            ctx.fillText("POWER: " + Math.floor(myPower), p.x, tankY - tSpecs.height - 10);
+        }
     }
 
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
-        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI * 2); ctx.fillStyle = '#ff3333'; ctx.fill();
-        
-        if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
-            const craterX = Math.floor(projectile.x); playExplosionSound();
-            checkExplosionDamage(craterX);
-            let ownerId = projectile.owner;
-            projectile = null;
-            if (gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
-        } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) {
-            let ownerId = projectile.owner;
-            projectile = null;
-            if (gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+        ctx.beginPath();
+        if(projectile.wType === 'oil') ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
+        else ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
+
+        if (!projectile.hasSplit && projectile.vy > 0.2) {
+            if (projectile.wType === 'cluster') {
+                projectile.hasSplit = true;
+                for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
+                projectile = null; 
+            } else if (projectile.wType === 'oil') {
+                projectile.hasSplit = true;
+                for (let i = 0; i < 6; i++) oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner, life: 150 });
+                projectile = null;
+            }
+        }
+
+        if (projectile) {
+            if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
+                const craterX = Math.floor(projectile.x); playExplosionSound();
+                for (let x = craterX - 25; x <= craterX + 25; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 25*25 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
+                checkExplosionDamage(craterX); 
+                let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
+                projectile = null; if (wasAi) socket.emit('aiFinishedTurn');
+            } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) { 
+                let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
+                projectile = null; if (wasAi) socket.emit('aiFinishedTurn');
+            }
         }
     }
+
+    for (let i = clusterProjectiles.length - 1; i >= 0; i--) {
+        let cp = clusterProjectiles[i]; cp.vy += gravity; cp.x += cp.vx; cp.y += cp.vy;
+        ctx.beginPath(); ctx.arc(cp.x, cp.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#ff6633'; ctx.fill();
+        if (cp.x >= 0 && cp.x < canvas.width && cp.y >= terrain[Math.floor(cp.x)]) {
+            const craterX = Math.floor(cp.x); playExplosionSound();
+            for (let x = craterX - 12; x <= craterX + 12; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 12*12 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
+            checkExplosionDamage(craterX, 22, 18); let ownerId = cp.owner; clusterProjectiles.splice(i, 1);
+            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { let ownerId = cp.owner; clusterProjectiles.splice(i, 1); if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn'); }
+    }
+
+    for (let i = oilDrops.length - 1; i >= 0; i--) {
+        let od = oilDrops[i]; od.life--; od.vy += gravity; od.x += od.vx; od.y += od.vy;
+        if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
+            od.y = terrain[Math.floor(od.x)];
+            let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)]; let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
+            if (leftSlope > rightSlope) od.vx = 1.5; else if (rightSlope > leftSlope) od.vx = -1.5; else od.vx = (Math.random() - 0.5) * 1.5;
+            od.x += od.vx; od.vy = 0;
+            for (let id in gamePlayers) {
+                const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
+                if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
+                    p.hp = Math.max(0, p.hp - 4); rebuildTopUi();
+                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; }
+                    od.life = 0; break;
+                }
+            }
+        }
+        ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
+        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height || od.life <= 0) {
+            let ownerId = od.owner; oilDrops.splice(i, 1);
+            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+        }
+    }
+
     requestAnimationFrame(draw);
+}
+
+function drawSkyAndCelestialBodies() {
+    let stage = Math.floor(totalShotsFiredInGame / 2) % 4;
+    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    if (stage === 0) { skyGradient.addColorStop(0, '#2c3e50'); skyGradient.addColorStop(1, '#0c2461'); } 
+    else if (stage === 1) { skyGradient.addColorStop(0, '#3498db'); skyGradient.addColorStop(1, '#87ceeb'); } 
+    else if (stage === 2) { skyGradient.addColorStop(0, '#6f1573'); skyGradient.addColorStop(1, '#2c3e50'); } 
+    else { skyGradient.addColorStop(0, '#0f172a'); skyGradient.addColorStop(1, '#020617'); }
+    ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (stage <= 1) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(100 + i*200, 80, 20, 0, Math.PI*2); ctx.arc(120 + i*200, 75, 25, 0, Math.PI*2); ctx.arc(140 + i*200, 80, 18, 0, Math.PI*2); ctx.fill(); }
+    }
+    let bodyX = canvas.width - ((totalShotsFiredInGame * 40) % (canvas.width + 100));
+    if (stage <= 1) { ctx.save(); ctx.shadowBlur = 25; ctx.shadowColor = "#ffaa00"; ctx.beginPath(); ctx.arc(bodyX, 60, 16, 0, Math.PI * 2); ctx.fillStyle = "#ffcc00"; ctx.fill(); ctx.restore(); } 
+    else { ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#fff"; ctx.beginPath(); ctx.arc(bodyX, 70, 14, 0, Math.PI * 2); ctx.fillStyle = "#e2e8f0"; ctx.fill(); ctx.restore(); }
 }
 
 function endTurnWithMovement() { clearInterval(turnTimerInterval); socket.emit('fire', { vx: 0, vy: 0, special: 'moved' }); }
 
 let activeKeys = {};
-window.addEventListener('keydown', (e) => { activeKeys[e.key] = true; });
+window.addEventListener('keydown', (e) => { 
+    activeKeys[e.key] = true; 
+    if (e.key === '1' || e.key === '2' || e.key === '3') { const keyNum = parseInt(e.key); if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } }
+});
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
 function handleGameControls() {
-    if (!gameActive || currentTurnId !== myId || projectile) return;
+    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
     const me = gamePlayers[myId]; if(!me || me.hp <= 0) return;
-    if (activeKeys['ArrowUp']) myAngle = Math.min(180, myAngle + 1);
-    if (activeKeys['ArrowDown']) myAngle = Math.max(0, myAngle - 1);
-    if (activeKeys['ArrowRight']) myPower = Math.min(100, myPower + 0.5);
-    if (activeKeys['ArrowLeft']) myPower = Math.max(1, myPower - 0.5);
-    if (activeKeys[' ']) { activeKeys[' '] = false; executeWeaponFire(); }
+    let changed = false;
+
+    if (activeKeys['Shift']) {
+        if (playerMovesLeft > 0) {
+            let nextX = me.x;
+            if (activeKeys['ArrowLeft'] || activeKeys['a']) { nextX = me.x - 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowLeft'] = false; activeKeys['a'] = false; changed = true; }
+            if (activeKeys['ArrowRight'] || activeKeys['d']) { nextX = me.x + 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowRight'] = false; activeKeys['d'] = false; changed = true; }
+            if (nextX > 30 && nextX < canvas.width - 30) { me.x = nextX; playMoveSound(); socket.emit('move', { x: me.x }); }
+            if (playerMovesLeft <= 0) { updateStatusText(); setTimeout(() => { endTurnWithMovement(); }, 600); return; }
+        }
+    } else {
+        if (activeKeys['ArrowUp']) { myAngle = Math.min(180, myAngle + 1); changed = true; resetTurnTimerOnAim(); }
+        if (activeKeys['ArrowDown']) { myAngle = Math.max(0, myAngle - 1); changed = true; resetTurnTimerOnAim(); }
+        if (activeKeys['ArrowRight']) { myPower = Math.min(100, myPower + 0.5); changed = true; resetTurnTimerOnAim(); }
+        if (activeKeys['ArrowLeft']) { myPower = Math.max(1, myPower - 0.5); changed = true; resetTurnTimerOnAim(); }
+    }
+
+    if (changed) { updateStatusText(); if (!activeKeys['Shift']) socket.emit('updateAim', { angle: myAngle, power: myPower }); }
+
+    if (activeKeys[' ']) {
+        activeKeys[' '] = false; executeWeaponFire();
+    }
 }
 
 function executeWeaponFire() {
     if (!gameActive || currentTurnId !== myId || projectile) return;
+    const activeWeapon = playerInventory[selectedWeaponKey];
+    if (activeWeapon.ammo <= 0) return;
+    if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
+
     clearInterval(turnTimerInterval); 
-    const me = gamePlayers[myId];
+    const me = gamePlayers[myId]; const tSpecs = TANK_TYPES[me.type];
     const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
-    socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: 'normal' });
+    playLaserSound(); rebuildTopUi();
+    socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
 }
 
 function updateStatusText() {
     if (!gameActive) return;
-    if (currentTurnId === myId) statusDiv.innerText = "התור שלך!";
-    else statusDiv.innerText = "תור היריב...";
+    if (currentTurnId === myId) { statusDiv.innerText = `התור שלך! (עוצמה: ${Math.floor(myPower)} | זווית: ${myAngle}° | נשק: ${playerInventory[selectedWeaponKey].name} | דלק: ${playerMovesLeft}/5)`; statusDiv.style.color = "#ffcc00"; } 
+    else { const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב"; statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333"; }
 }
 
 function showGameLayout() { 
     document.getElementById('login-panel').style.display = 'none'; 
+    document.getElementById('lobby-panel').style.display = 'none'; 
+    document.getElementById('game-over-screen').style.display = 'none'; 
     document.getElementById('game-container').style.display = 'block'; 
     statusDiv.style.display = 'block'; 
+    document.getElementById('controls-info').style.display = 'block'; 
+    
+    if (window.innerHeight < 600 || window.innerWidth < 800 || /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+        document.getElementById('mobile-controls').style.display = 'flex';
+        document.getElementById('controls-info').style.display = 'none'; 
+    }
 }
 
 function setupMobileControls() {
-    const setupBtn = (id, action) => { document.getElementById(id)?.addEventListener('touchstart', (e) => { e.preventDefault(); action(); }); };
+    const triggerKey = (key, state) => { activeKeys[key] = state; };
+    const setupBtn = (id, actionDown, actionUp) => {
+        const btn = document.getElementById(id); if (!btn) return;
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); actionDown(); });
+        if (actionUp) btn.addEventListener('touchend', (e) => { e.preventDefault(); actionUp(); });
+    };
+    setupBtn('m-up', () => { triggerKey('ArrowUp', true); }, () => { triggerKey('ArrowUp', false); });
+    setupBtn('m-down', () => { triggerKey('ArrowDown', true); }, () => { triggerKey('ArrowDown', false); });
+    setupBtn('m-left', () => { triggerKey('ArrowLeft', true); }, () => { triggerKey('ArrowLeft', false); });
+    setupBtn('m-right', () => { triggerKey('ArrowRight', true); }, () => { triggerKey('ArrowRight', false); });
+    const sBtn = document.getElementById('m-shift');
+    if(sBtn) { sBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(activeKeys['Shift']) { activeKeys['Shift'] = false; sBtn.classList.remove('btn-active-toggle'); } else { activeKeys['Shift'] = true; sBtn.classList.add('btn-active-toggle'); } }); }
+    setupBtn('m-w1', () => { selectedWeaponKey = 1; playMoveSound(); rebuildTopUi(); });
+    setupBtn('m-w2', () => { selectedWeaponKey = 2; playMoveSound(); rebuildTopUi(); });
+    setupBtn('m-w3', () => { selectedWeaponKey = 3; playMoveSound(); rebuildTopUi(); });
     setupBtn('m-fire', () => { executeWeaponFire(); });
 }
 
