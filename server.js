@@ -1,26 +1,68 @@
-2026-05-23T09:16:05.341214815Z ==> Downloading cache...
-2026-05-23T09:16:05.379566103Z ==> Cloning from https://github.com/tsahovi-afk/scortch-earth
-2026-05-23T09:16:10.872389195Z ==> Checking out commit 162518de7970f27cc8b9c0dca8a28052ada1e88c in branch main
-2026-05-23T09:16:11.280931355Z ==> Downloaded 201B in 5s. Extraction took 0s.
-2026-05-23T09:16:12.427256388Z ==> Using Node.js version 24.14.1 (default)
-2026-05-23T09:16:12.427268049Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
-2026-05-23T09:16:12.473973941Z ==> Running build command 'yarn install'...
-2026-05-23T09:16:12.741403844Z yarn install v1.22.22
-2026-05-23T09:16:12.751436024Z warning package.json: No license field
-2026-05-23T09:16:12.75903856Z info No lockfile found.
-2026-05-23T09:16:12.762823412Z warning scorched-earth-online@1.0.0: No license field
-2026-05-23T09:16:12.764063635Z [1/4] Resolving packages...
-2026-05-23T09:16:12.791873437Z (node:96) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-2026-05-23T09:16:12.791888818Z (Use `node --trace-deprecation ...` to show where the warning was created)
-2026-05-23T09:16:13.281230432Z [2/4] Fetching packages...
-2026-05-23T09:16:13.935301513Z [3/4] Linking dependencies...
-2026-05-23T09:16:14.128142908Z [4/4] Building fresh packages...
-2026-05-23T09:16:14.133327262Z success Saved lockfile.
-2026-05-23T09:16:14.13605368Z Done in 1.40s.
-2026-05-23T09:16:15.413702593Z ==> Uploading build...
-2026-05-23T09:16:17.404301988Z ==> Uploaded in 1.8s. Compression took 0.2s
-2026-05-23T09:16:17.405062507Z ==> Build successful 🎉
-2026-05-23T09:16:22.636562637Z ==> Deploying...
-2026-05-23T09:16:22.715827028Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
-2026-05-23T09:16:30.867277909Z ==> Exited with status 1
-2026-05-23T09:16:30.873667357Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+const express = require('express');
+const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+const path = require('path');
+
+// השרת שולח את קובץ המשחק המרכזי ישירות למי שנכנס לאתר
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+let players = {};
+let turn = null;
+
+io.on('connection', (socket) => {
+    // שחקן ראשון מתחבר - מקבל את המיתוג צהובי
+    if (Object.keys(players).length === 0) {
+        players[socket.id] = { id: socket.id, x: 150, color: '#ffcc00', name: 'צהובי' };
+        socket.emit('init', { id: socket.id, side: 'left', players });
+    } 
+    // שחקן שני מתחבר
+    else if (Object.keys(players).length === 1) {
+        players[socket.id] = { id: socket.id, x: 650, color: '#ff3333', name: 'שחקן 2' };
+        socket.emit('init', { id: socket.id, side: 'right', players });
+        turn = Object.keys(players)[0]; 
+        io.emit('startGame', { players, turn });
+    } else {
+        socket.emit('full');
+        return;
+    }
+
+    socket.on('updateAim', (data) => {
+        if (players[socket.id]) {
+            io.emit('playerAimed', { id: socket.id, angle: data.angle, power: data.power });
+        }
+    });
+
+    socket.on('fire', (data) => {
+        if (socket.id === turn) {
+            // אם השחקן שלח פקודת אש רגילה ולא רק זז
+            if (!data.special) {
+                io.emit('playerFired', { id: socket.id, vx: data.vx, vy: data.vy });
+            }
+            // העברת התור לשחקן הבא
+            const playerIds = Object.keys(players);
+            turn = playerIds.find(id => id !== socket.id);
+            io.emit('nextTurn', { turn });
+        }
+    });
+
+    socket.on('move', (data) => {
+        if (players[socket.id]) {
+            players[socket.id].x = data.x;
+            io.emit('playerMoved', { id: socket.id, x: data.x });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        delete players[socket.id];
+        turn = null;
+        io.emit('playerLeft');
+    });
+});
+
+const PORT = process.env.PORT || 10000;
+http.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
