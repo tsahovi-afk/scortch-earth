@@ -156,7 +156,7 @@
                     <td>פגזים שנורו בזירה</td>
                     <td id="stat-shots-player">0</td>
                     <td id="stat-shots-ai">0</td>
-              </tr>
+                </tr>
                 <tr>
                     <td>פגיעות מוצלחות</td>
                     <td id="stat-hits-player">0</td>
@@ -475,7 +475,7 @@ function checkAndRunAiTurn() {
     statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
     statusDiv.style.color = "#ff3333";
 
-    // שלב 1: ניתוח מפה (5 שניות)
+    // שלב 1: ניתוח מפה (2 שניות בלבד)
     setTimeout(() => {
         if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
         
@@ -491,7 +491,7 @@ function checkAndRunAiTurn() {
 
         let targetPlayer = gamePlayers[myId] || Object.values(gamePlayers).find(p => !p.isAi && p.hp > 0);
         
-        // שלב 2: כיוון וירי (5 שניות)
+        // שלב 2: כיוון וירי (3 שניות בלבד)
         statusDiv.innerText = `המחשב (${ai.name}) מכוון ויורה...`;
         
         setTimeout(() => {
@@ -513,8 +513,8 @@ function checkAndRunAiTurn() {
                 vy: -Math.sin(fireRad) * speed, 
                 wType: aiWeaponType 
             });
-        }, 5000); 
-    }, 5000); 
+        }, 3000); 
+    }, 2000); 
 }
 
 function drawSkyAndCelestialBodies() {
