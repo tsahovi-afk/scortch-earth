@@ -12,7 +12,6 @@ let players = {};
 let turnOrder = [];
 let currentTurnIndex = 0;
 let gameInProgress = false;
-let maxPlayersConfig = 2;
 
 io.on('connection', (socket) => {
     
@@ -22,7 +21,6 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // שמירת נתוני השחקן שהתחבר מהרשת
         players[socket.id] = {
             id: socket.id,
             name: data.name || 'שחקן רשת',
@@ -39,30 +37,25 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startConfiguredGame', (data) => {
-        if (gameInProgress) return;
-        
-        maxPlayersConfig = parseInt(data.totalPlayers) || 2;
-        const aiCount = parseInt(data.aiCount) || 0;
-        
-        // הגרלת מיקומים על פני המסך (במרווחים שווים)
-        let totalSlots = Object.keys(players).length + aiCount;
-        let step = 700 / (totalSlots + 1);
-        let currentSlot = 1;
-        
-        // מיקום שחקני אנושיים
-        turnOrder = [];
+        // ניקוי בוטים ישנים שנשארו בריצה קודמת
         for (let id in players) {
-            players[id].x = Math.floor(50 + currentSlot * step);
-            turnOrder.push(id);
-            currentSlot++;
+            if (players[id].isAi) delete players[id];
         }
+
+        const totalSlotsRequested = parseInt(data.totalPlayers) || 2;
+        const aiCountRequested = parseInt(data.aiCount) || 0;
         
-        // הוספת בוטים של מחשב (AI) ללובי ולסבב התורות
-        const aiNames = ['המחסל', 'צייד הבז', 'אלפא-בוט', 'ברזל כבד', 'זיקית רובוטית'];
+        const humanIds = Object.keys(players).filter(id => !players[id].isAi);
+        
+        // יצירת סבב התורות
+        turnOrder = [...humanIds];
+        
+        // הוספת בוטים של מחשב (AI)
+        const aiNames = ['המחשל', 'צייד הבז', 'אלפא-בוט', 'ברזל כבד', 'זיקית רובוטית'];
         const aiColors = ['#ff3333', '#00ff00', '#33ccff', '#ffffff', '#ff00ff'];
         const aiTypes = ['medium', 'heavy', 'light'];
         
-        for (let i = 0; i < aiCount; i++) {
+        for (let i = 0; i < aiCountRequested; i++) {
             let aiId = 'ai_' + Math.random().toString(36).substr(2, 5);
             players[aiId] = {
                 id: aiId,
@@ -70,15 +63,22 @@ io.on('connection', (socket) => {
                 color: aiColors[i] || '#ff3333',
                 type: aiTypes[Math.floor(Math.random() * aiTypes.length)],
                 isAi: true,
-                x: Math.floor(50 + currentSlot * step),
+                x: 0,
                 hp: 100,
                 maxHp: 100,
                 lives: 3,
                 inventory: { 1: Infinity, 2: 2, 3: 1 }
             };
             turnOrder.push(aiId);
-            currentSlot++;
         }
+        
+        // חלוקת מיקומים שווה על פני המסך לכולם
+        let totalActive = turnOrder.length;
+        let step = 700 / (totalActive + 1);
+        
+        turnOrder.forEach((id, index) => {
+            players[id].x = Math.floor(50 + (index + 1) * step);
+        });
         
         gameInProgress = true;
         currentTurnIndex = 0;
@@ -113,7 +113,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('aiFinishedTurn', () => {
-        // העברת תור רשמית לאחר שהבוט סיים לירות או לזוז
         if (players[turnOrder[currentTurnIndex]] && players[turnOrder[currentTurnIndex]].isAi) {
             nextTurn();
         }
@@ -122,30 +121,33 @@ io.on('connection', (socket) => {
     function nextTurn() {
         if (turnOrder.length === 0) return;
         
-        // מעבר לשחקן הבא שעדיין חי
         let attempts = 0;
-        do {
+        let foundNext = false;
+        
+        while (attempts < turnOrder.length) {
             currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
+            let nextId = turnOrder[currentTurnIndex];
+            
+            if (players[nextId] && (players[nextId].hp > 0 || players[nextId].lives > 0)) {
+                foundNext = true;
+                break;
+            }
             attempts++;
-        } while (players[turnOrder[currentTurnIndex]] && players[turnOrder[currentTurnIndex]].hp <= 0 && pHasLives(turnOrder[currentTurnIndex]) === false && attempts < turnOrder.length);
+        }
         
         io.emit('nextTurn', { currentTurnId: turnOrder[currentTurnIndex] });
-    }
-
-    function pHasLives(id) {
-        return players[id] && players[id].lives > 0;
     }
 
     socket.on('disconnect', () => {
         if (players[socket.id]) {
             delete players[socket.id];
             turnOrder = turnOrder.filter(id => id !== socket.id);
-            if (turnOrder.length <= 1) {
+            if (turnOrder.filter(id => !players[id].isAi).length === 0) {
                 gameInProgress = false;
-                io.emit('playerLeftReset');
-            } else {
-                io.emit('lobbyUpdate', { players: Object.values(players) });
+                players = {};
+                turnOrder = [];
             }
+            io.emit('lobbyUpdate', { players: Object.values(players).filter(p => !p.isAi) });
         }
     });
 });
