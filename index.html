@@ -8,12 +8,12 @@
         body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
         #game-container { position: relative; display: none; }
         canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; max-width: 95vw; height: auto; }
-        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 350px; }
+        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; }
         button { background-color: #ffcc00; color: #000; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; margin: 10px; cursor: pointer; border-radius: 5px; }
         .color-dot { display: inline-block; width: 40px; height: 30px; margin: 5px; border: 2px solid #555; cursor: pointer; border-radius: 4px; }
         .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; }
         .share-row { display: flex; gap: 5px; margin-top: 10px; }
-        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 10px; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -21,16 +21,18 @@
 
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים</h2>
+        <label>כינוי קרב:</label>
         <input type="text" id="player-name" value="צהובי">
+        <label>בחר צבע מותג:</label>
         <div id="color-grid">
             <div class="color-dot selected" style="background:#ffcc00" onclick="selectColor(this, '#ffcc00')"></div>
             <div class="color-dot" style="background:#ff3333" onclick="selectColor(this, '#ff3333')"></div>
             <div class="color-dot" style="background:#00ff00" onclick="selectColor(this, '#00ff00')"></div>
             <div class="color-dot" style="background:#33ccff" onclick="selectColor(this, '#33ccff')"></div>
             <div class="color-dot" style="background:#ffffff" onclick="selectColor(this, '#ffffff')"></div>
-            <div class="color-dot" style="background:#111" onclick="selectColor(this, '#111')"></div>
+            <div class="color-dot" style="background:#111; border: 2px dashed #ffcc00" onclick="selectColor(this, '#111')"></div>
         </div>
-        <button onclick="joinLobby()">התחבר למשחק</button>
+        <button onclick="joinLobby()">התחבר ללובי</button>
         <div class="share-row">
             <input type="text" id="share-link" readonly>
             <button onclick="copyLink()">📋 העתק</button>
@@ -39,8 +41,16 @@
 
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ הגדרות זירה</h2>
-        <select id="total-players"><option value="2">2 שחקנים</option><option value="4">4 שחקנים</option></select>
-        <select id="ai-count"><option value="1">בוט אחד</option><option value="2">2 בוטים</option></select>
+        <label>סה"כ שחקנים (כולל בוטים):</label>
+        <select id="total-players">
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            <option value="5">5</option><option value="6">6</option>
+        </select>
+        <label>כמות בוטים (מחשב):</label>
+        <select id="ai-count">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option>
+        </select>
         <button onclick="startGame()">שגר משחק!</button>
     </div>
 
@@ -49,7 +59,7 @@
     </div>
 
     <script>
-        let socket, gameActive = false, players = {}, chosenColor = '#ffcc00', myId = '';
+        let socket, gameActive = false, players = {}, chosenColor = '#ffcc00';
         
         function selectColor(el, color) {
             document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
@@ -58,7 +68,8 @@
         }
 
         function copyLink() {
-            document.getElementById('share-link').select();
+            const input = document.getElementById('share-link');
+            input.select();
             document.execCommand('copy');
             alert('הקישור הועתק!');
         }
@@ -73,7 +84,10 @@
         }
 
         function startGame() {
-            socket.emit('startConfiguredGame', { totalPlayers: document.getElementById('total-players').value, aiCount: document.getElementById('ai-count').value });
+            socket.emit('startConfiguredGame', { 
+                totalPlayers: document.getElementById('total-players').value, 
+                aiCount: document.getElementById('ai-count').value 
+            });
         }
 
         socket = io();
@@ -85,7 +99,6 @@
             draw();
         });
 
-        // הבוט יורה מיידית בתור שלו כדי לא להיתקע
         socket.on('nextTurn', (data) => {
             if(players[data.currentTurnId]?.isAi) {
                 setTimeout(() => {
