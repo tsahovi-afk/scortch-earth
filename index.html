@@ -28,6 +28,12 @@
         button:hover { background-color: #ffee55; transform: scale(1.03); }
         button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px #997a00; }
         
+        /* תיקון יציב ואטום לקוביות בחירת הצבעים */
+        .color-picker-grid { display: flex; justify-content: space-between; gap: 6px; margin: 10px 0 15px 0; background: #111; padding: 8px; border-radius: 6px; border: 1px solid #444; }
+        .color-dot { display: block; width: 45px; height: 35px; border: 2px solid #444; cursor: pointer; border-radius: 4px; transition: 0.1s; }
+        .color-dot:hover { transform: scale(1.08); border-color: #aaa; }
+        .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; transform: scale(1.05); }
+
         .share-container { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555; display: flex; flex-direction: column; align-items: center; }
         .share-label { font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold; text-align: center; }
         .share-row { display: flex; width: 100%; gap: 5px; }
@@ -57,12 +63,12 @@
         
         <label>בחר צבע מותג:</label>
         <div class="color-picker-grid">
-            <div class="color-dot selected" style="background:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div>
-            <div class="color-dot" style="background:#ff3333" onclick="pickColor(this, '#ff3333')"></div>
-            <div class="color-dot" style="background:#00ff00" onclick="pickColor(this, '#00ff00')"></div>
-            <div class="color-dot" style="background:#33ccff" onclick="pickColor(this, '#33ccff')"></div>
-            <div class="color-dot" style="background:#ffffff" onclick="pickColor(this, '#ffffff')"></div>
-            <div class="color-dot" style="background:#111111; border:2px dashed #ffcc00" onclick="pickColor(this, '#111111')"></div>
+            <div class="color-dot selected" style="background-color:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div> <!-- צהוב -->
+            <div class="color-dot" style="background-color:#ff3333" onclick="pickColor(this, '#ff3333')"></div> <!-- אדום -->
+            <div class="color-dot" style="background-color:#00ff00" onclick="pickColor(this, '#00ff00')"></div> <!-- ירוק -->
+            <div class="color-dot" style="background-color:#33ccff" onclick="pickColor(this, '#33ccff')"></div> <!-- כחול -->
+            <div class="color-dot" style="background-color:#ffffff" onclick="pickColor(this, '#ffffff')"></div> <!-- לבן -->
+            <div class="color-dot" style="background-color:#222222; border: 2px dashed #ffcc00" onclick="pickColor(this, '#222222')"></div> <!-- שחור -->
         </div>
 
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
@@ -389,10 +395,8 @@ function startTurnTimer() {
     }, 1000);
 }
 
-// מנגנון האיפוס המשופר: יעבוד אך ורק אם השחקן הנוכחי הוא אנושי!
 function resetTurnTimerOnAim() {
     if (gameActive && !projectile && currentTurnId === myId) {
-        // המחשב חסום מלהיכנס לכאן, השעון שלו יישאר אטום וקשיח
         turnSecondsLeft = 10;
         updateTimerDisplay();
     }
