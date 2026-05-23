@@ -473,13 +473,12 @@ function checkAndRunAiTurn() {
     statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
     statusDiv.style.color = "#ff3333";
 
-    // ניתוח מפה: 5 שניות
+    // 1. ניתוח מפה (5 שניות)
     setTimeout(() => {
-        if (!gameActive || currentTurnId === myId || projectile) return;
+        if (!gameActive || projectile) return;
         
         const ai = gamePlayers[currentTurnId];
         
-        // בחירת טנק רנדומלית אם צריך
         if (ai.hp <= 0 && ai.lives > 0) {
             const types = ['medium', 'heavy', 'light'];
             ai.type = types[Math.floor(Math.random() * types.length)];
@@ -499,11 +498,11 @@ function checkAndRunAiTurn() {
             return;
         }
 
-        // בחירת נשק וביצוע ירי: 5 שניות
+        // 2. כיוון וירי (5 שניות)
         statusDiv.innerText = `המחשב (${ai.name}) מכוון...`;
         
         setTimeout(() => {
-            if (!gameActive || currentTurnId === myId || projectile) return;
+            if (!gameActive || projectile) return;
 
             let targetAngle = ai.x > targetPlayer.x ? 135 : 45;
             let distance = Math.abs(ai.x - targetPlayer.x);
@@ -519,6 +518,7 @@ function checkAndRunAiTurn() {
             const fireRad = (targetAngle * Math.PI) / 180;
             const speed = targetPower * 0.12;
             
+            // שליחת פקודת הירי ישירות
             socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
         }, 5000);
         
