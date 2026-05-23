@@ -2,25 +2,37 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>אדמה חרוכה - ארקייד 1990 עם חיים וסטטיסטיקות</title>
+    <title>אדמה חרוכה - ארסנל נשקים, בחירת טנק במוות וממשק רטרו</title>
     <style>
-        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        canvas { border: 2px solid #ffcc00; background-color: #050510; display: none; }
+        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
+        #game-container { position: relative; display: none; }
+        canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; }
+        
+        /* לוח בקרה עליון מובנה במסגרת המשחק */
+        .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; font-family: monospace; }
+        .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 10px 15px; border-radius: 4px; min-width: 180px; box-shadow: 0 0 10px rgba(255, 204, 0, 0.2); }
+        .ui-player { text-align: right; color: #ffcc00; }
+        .ui-ai { text-align: left; color: #ff3333; border-color: #ff3333; }
+        .ui-panel-box h3 { margin: 0 0 5px 0; font-size: 16px; text-shadow: 1px 1px #000; }
+        .ui-panel-box div { font-size: 13px; margin: 2px 0; }
+
         #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; }
-        #controls-info { margin-top: 5px; font-size: 14px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
+        #controls-info { margin-top: 5px; font-size: 13px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
         
         .panel { background-color: #222; padding: 30px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; max-width: 500px; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
         button { background-color: #ffcc00; color: #000; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; margin: 10px; cursor: pointer; border-radius: 5px; transition: 0.2s; box-shadow: 3px 3px 0px #997a00; }
         button:hover { background-color: #ffee55; transform: scale(1.05); }
         button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #997a00; }
         
+        /* חלונות בחירה וסיום */
         #tank-select { display: none; }
-        .tank-option { background: #333; border: 1px solid #555; padding: 15px; margin: 10px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
+        .tank-option { background: #333; border: 1px solid #555; padding: 12px; margin: 10px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
         .tank-option:hover { border-color: #ffcc00; background: #3c3c3c; }
-        .tank-name { font-size: 18px; font-weight: bold; color: #ffcc00; margin-bottom: 5px; }
+        .tank-name { font-size: 16px; font-weight: bold; color: #ffcc00; margin-bottom: 3px; }
 
-        /* מסך סיום רטרו מעוצב */
-        #game-over-screen { display: none; position: absolute; z-index: 10; background-color: rgba(10, 10, 15, 0.95); border: 4px double #ffcc00; padding: 35px; border-radius: 0px; text-align: center; min-width: 320px; box-shadow: 0 0 30px #ff3333; }
+        #respawn-select-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 5; display: flex; align-items: center; justify-content: center; }
+
+        #game-over-screen { display: none; position: absolute; z-index: 10; background-color: rgba(10, 10, 15, 0.95); border: 4px double #ffcc00; padding: 35px; text-align: center; min-width: 340px; box-shadow: 0 0 30px #ff3333; }
         .game-over-title { font-size: 32px; font-weight: bold; color: #ff3333; text-shadow: 2px 2px #000; letter-spacing: 2px; margin-bottom: 20px; }
         .stats-table { width: 100%; margin: 20px 0; border-collapse: collapse; text-align: right; font-size: 15px; }
         .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 8px; }
@@ -39,24 +51,58 @@
         <button onclick="startOnlineGame()">🌐 משחק אונליין נגד חבר</button>
     </div>
 
-    <!-- תפריט בחירת טנקים -->
+    <!-- תפריט בחירת טנקים תחילת משחק -->
     <div id="tank-select" class="panel">
         <h2>בחר את דגם הטנק שלך</h2>
         <div class="tank-option" onclick="selectTank('medium')">
             <div class="tank-name">🚀 טנק צייד (Medium)</div>
-            <div>מאוזן לכל משימה. חיים: 100% | גודל: בינוני | מלאי: 3 טנקים</div>
+            <div>מאוזן לכל משימה. חיים: 100% | גודל: בינוני | מלאי: 3 חיים</div>
         </div>
         <div class="tank-option" onclick="selectTank('heavy')">
             <div class="tank-name">🐘 טנק ממותה (Heavy)</div>
-            <div>משוריין וכבד. חיים: 150% (150 HP) | גודל: רחב | מלאי: 3 טנקים</div>
+            <div>משוריין וכבד. חיים: 150% (150 HP) | גודל: רחב | מלאי: 3 חיים</div>
         </div>
         <div class="tank-option" onclick="selectTank('light')">
             <div class="tank-name">⚡ טנק זיקית (Light)</div>
-            <div>קטן וחמקמק. חיים: 75% (75 HP) | גודל: צר | מלאי: 3 טנקים</div>
+            <div>קטן וחמקמק. חיים: 75% (75 HP) | גודל: צר | מלאי: 3 חיים</div>
         </div>
     </div>
 
-    <!-- מסך סיכום וסיום משחק רטרו -->
+    <!-- זירת המשחק המרכזית -->
+    <div id="game-container">
+        <!-- חלון בחירת טנק בזמן מוות (Respawn) מובנה מעל הזירה -->
+        <div id="respawn-select-overlay" style="display: none;">
+            <div class="panel" style="max-width: 400px; border-color: #ff3333;">
+                <h3 style="color: #ff3333; margin-top: 0;">💥 הטנק שלך נהרס! 💥</h3>
+                <p>בחר דגם טנק חדש כדי לחזור מיד לסיבוב הבא:</p>
+                <div class="tank-option" onclick="executeRespawn('medium')"><strong>🚀 טנק צייד</strong> (100 HP)</div>
+                <div class="tank-option" onclick="executeRespawn('heavy')"><strong>🐘 טנק ממותה</strong> (150 HP)</div>
+                <div class="tank-option" onclick="executeRespawn('light')"><strong>⚡ טנק זיקית</strong> (75 HP)</div>
+            </div>
+        </div>
+
+        <!-- לוח ממשק עליון מפוצל ימין ושמאל -->
+        <div class="ui-bar">
+            <!-- שמאל: צהובי -->
+            <div class="ui-panel-box ui-player">
+                <h3 id="ui-p1-name">צהובי</h3>
+                <div id="ui-p1-hp">HP: 100/100</div>
+                <div id="ui-p1-lives">טנקים במלאי: 🔴🔴🔴</div>
+                <div id="ui-p1-weapon" style="color: #fff; font-weight: bold; margin-top: 5px;">נשק: פגז רגיל (∞)</div>
+            </div>
+            <!-- ימין: המחשב -->
+            <div class="ui-panel-box ui-ai" style="border-color: #ff3333;">
+                <h3 id="ui-p2-name">המחשב</h3>
+                <div id="ui-p2-hp">HP: 100/100</div>
+                <div id="ui-p2-lives">טנקים במלאי: 🔴🔴🔴</div>
+                <div id="ui-p2-weapon" style="color: #fff;">נשק: פגז רגיל</div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+    </div>
+
+    <!-- מסך סיכום וסטטיסטיקות -->
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 20px;">צהובי ניצח את המערכה!</h3>
@@ -97,11 +143,10 @@
         <button class="btn-exit" onclick="backToMenu()">❌ יציאה לתפריט</button>
     </div>
 
-    <h2 id="gameTitle" style="display:none; color: #ffcc00; margin: 5px 0 0 0; font-size: 20px;">אדמה חרוכה</h2>
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
     <div id="status">טוען...</div>
     <div id="controls-info">
-        חצים: כיוון ועוצמה | רווח: אש<br>
+        <strong>קנה וכוח:</strong> חצים למעלה/למטה (זווית), חצים ימינה/שמאלה (עוצמה) | <strong>🔥 אש:</strong> רווח<br>
+        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3 יחידות) | מקש [3] פצצת שמן נוזלי (3 יחידות)<br>
         <strong>🚙 תנועה טקטית:</strong> Shift + חץ ימינה/שמאלה (עד 5 צעדים בתור, זזת - התור עובר!)
     </div>
 
@@ -118,13 +163,22 @@ let gameActive = false;
 let currentTurnId = null;
 let gamePlayers = {};
 let projectile = null;
+let clusterProjectiles = []; // מערך לפגזים הקטנים של נשק 2
+let oilDrops = []; // מערך לטיפות השמן הגולשות של נשק 3
 const gravity = 0.15;
 
 let aiLastSpecs = { angle: 135, power: 60 };
 let aiLastXLand = null;
 let playerMovesLeft = 5;
 
-// אובייקט לאיסוף נתונים סטטיסטיים
+// מערך נשקים ומלאי של השחקן
+let playerInventory = {
+    1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
+    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
+    3: { name: "שמן נוזלי", ammo: 3, type: "oil" }
+};
+let selectedWeaponKey = 1;
+
 let stats = {
     player: { shots: 0, hits: 0, moves: 0 },
     ai: { shots: 0, hits: 0, moves: 0 }
@@ -137,10 +191,6 @@ const TANK_TYPES = {
 };
 
 const terrain = [];
-for (let x = 0; x < canvas.width; x++) {
-    terrain[x] = 400 + Math.sin(x * 0.01) * 60 + Math.cos(x * 0.03) * 20;
-}
-
 let myAngle = 45;
 let myPower = 50;
 
@@ -159,12 +209,12 @@ function playLaserSound() {
 
 function playExplosionSound() {
     initAudio();
-    const bufferSize = audioCtx.sampleRate * 0.4; const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const bufferSize = audioCtx.sampleRate * 0.3; const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
     const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(200, audioCtx.currentTime); filter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.4);
-    const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+    filter.frequency.setValueAtTime(180, audioCtx.currentTime); filter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
+    const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.25, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
     noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
     noise.start();
 }
@@ -202,24 +252,28 @@ function playGameOverSound(win) {
 }
 
 function openTankSelection() { initAudio(); isAiMode = true; document.getElementById('menu').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('tank-select').style.display = 'block'; }
-function showGameLayout() { document.getElementById('menu').style.display = 'none'; document.getElementById('tank-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('gameTitle').style.display = 'block'; canvas.style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
+function showGameLayout() { document.getElementById('menu').style.display = 'none'; document.getElementById('tank-select').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-container').style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
 
 window.selectTank = function(type) {
     showGameLayout();
     const aiTypes = ['medium', 'heavy', 'light'];
     const aiType = aiTypes[Math.floor(Math.random() * aiTypes.length)];
 
-    // איפוס סטטיסטיקות למשחק חדש
     stats = { player: { shots: 0, hits: 0, moves: 0 }, ai: { shots: 0, hits: 0, moves: 0 } };
+    playerInventory = { 1: { name: "פגז רגיל", ammo: Infinity, type: "normal" }, 2: { name: "פגז מתפצל", ammo: 3, type: "cluster" }, 3: { name: "שמן נוזלי", ammo: 3, type: "oil" } };
+    selectedWeaponKey = 1;
 
-    // הוספת שדה lives לטנקים (3 פסילות)
+    for (let x = 0; x < canvas.width; x++) {
+        terrain[x] = 380 + Math.sin(x * 0.01) * 50 + Math.cos(x * 0.03) * 15;
+    }
+
     gamePlayers = {
         'local_player': { id: 'local_player', x: 150, color: '#ffcc00', name: 'צהובי', angle: 45, power: 50, type: type, hp: TANK_TYPES[type].maxHp, maxHp: TANK_TYPES[type].maxHp, lives: 3 },
-        'ai_player': { id: 'ai_player', x: 650, color: '#ff3333', name: 'המחשב', angle: 135, power: 60, type: aiType, hp: TANK_TYPES[aiType].maxHp, maxHp: TANK_TYPES[aiType].maxHp, lives: 3 }
+        'ai_player': { id: 'ai_player', x: 650, color: '#ff3333', name: 'המחשב', angle: 135, power: 60, type: aiType, hp: TANK_TYPES[aiType].maxHp, maxHp: TANK_TYPES[aiType].maxHp, lives: 3, weapon: 1, inventory: { 1: Infinity, 2: 2, 3: 1 } }
     };
     
     aiLastSpecs = { angle: 135, power: 60 }; aiLastXLand = null; playerMovesLeft = 5; currentTurnId = 'local_player'; gameActive = true;
-    updateStatusText(); draw();
+    updateTopUi(); updateStatusText(); draw();
 }
 
 window.startOnlineGame = function() {
@@ -230,18 +284,37 @@ window.startOnlineGame = function() {
     socket.on('startGame', (data) => {
         gamePlayers = data.players;
         for(let id in gamePlayers) { gamePlayers[id].type = 'medium'; gamePlayers[id].hp = 100; gamePlayers[id].maxHp = 100; gamePlayers[id].lives = 3; }
-        playerMovesLeft = 5; currentTurnId = data.turn; gameActive = true; updateStatusText();
+        playerMovesLeft = 5; currentTurnId = data.turn; gameActive = true; updateTopUi(); updateStatusText();
     });
     socket.on('playerAimed', (data) => { if (gamePlayers[data.id]) { gamePlayers[data.id].angle = data.angle; gamePlayers[data.id].power = data.power; } });
     socket.on('playerFired', (data) => {
         const shootingTank = gamePlayers[data.id]; const tSpecs = TANK_TYPES[shootingTank.type]; playLaserSound();
         if(data.id === myId) stats.player.shots++; else stats.ai.shots++;
-        projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id };
+        projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id, wType: data.wType || "normal", hasSplit: false };
     });
     socket.on('playerMoved', (data) => { if (gamePlayers[data.id]) { gamePlayers[data.id].x = data.x; if(data.id !== myId) stats.ai.moves++; } });
-    socket.on('nextTurn', (data) => { currentTurnId = data.turn; playerMovesLeft = 5; setTimeout(() => { updateStatusText(); }, 1500); });
+    socket.on('nextTurn', (data) => { currentTurnId = data.turn; playerMovesLeft = 5; updateTopUi(); setTimeout(() => { updateStatusText(); }, 1500); });
     socket.on('playerLeft', () => { gameActive = false; statusDiv.innerText = "השחקן השני התנתק. מחכה לשחקן חדש..."; });
     draw();
+}
+
+function updateTopUi() {
+    if (!gamePlayers['local_player']) return;
+    
+    // צהובי (שמאל)
+    const p1 = gamePlayers['local_player'];
+    document.getElementById('ui-p1-hp').innerText = `HP: ${p1.hp}/${p1.maxHp}`;
+    document.getElementById('ui-p1-lives').innerText = "טנקים במלאי: " + "🔴".repeat(p1.lives);
+    const ammoText = playerInventory[selectedWeaponKey].ammo === Infinity ? "∞" : playerInventory[selectedWeaponKey].ammo;
+    document.getElementById('ui-p1-weapon').innerText = `נשק: ${playerInventory[selectedWeaponKey].name} (${ammoText})`;
+
+    // המחשב (ימין)
+    const p2 = gamePlayers['ai_player'];
+    if (p2) {
+        document.getElementById('ui-p2-hp').innerText = `HP: ${p2.hp}/${p2.maxHp}`;
+        document.getElementById('ui-p2-lives').innerText = "טנקים במלאי: " + "🔴".repeat(p2.lives);
+        document.getElementById('ui-p2-weapon').innerText = isAiMode ? "נשק: מבוזר" : "נשק: רשת רגיל";
+    }
 }
 
 function endTurnWithMovement() {
@@ -264,17 +337,10 @@ function runAiTurn() {
         if (ai.hp < (ai.maxHp * 0.5) && lastPlayerImpactDist < 60 && Math.random() < 0.4) {
             statusDiv.innerText = "המחשב מחליט לתמרן ולברוח!";
             stats.ai.moves += 4;
-            const dir = ai.x > me.x ? 1 : -1; 
-            const steps = 3 + Math.floor(Math.random() * 3); 
-            for(let i=0; i<steps; i++) {
-                let nextX = ai.x + (dir * 6);
-                if (nextX > 50 && nextX < 750) ai.x = nextX;
-            }
-            playMoveSound();
-            currentTurnId = 'local_player';
-            playerMovesLeft = 5;
-            setTimeout(() => { updateStatusText(); }, 1500);
-            return;
+            const dir = ai.x > me.x ? 1 : -1; const steps = 3 + Math.floor(Math.random() * 3); 
+            for(let i=0; i<steps; i++) { let nextX = ai.x + (dir * 6); if (nextX > 50 && nextX < 750) ai.x = nextX; }
+            playMoveSound(); currentTurnId = 'local_player'; playerMovesLeft = 5; updateTopUi();
+            setTimeout(() => { updateStatusText(); }, 1500); return;
         }
 
         let targetAngle = aiLastSpecs.angle; let targetPower = aiLastSpecs.power;
@@ -288,16 +354,20 @@ function runAiTurn() {
             const distance = Math.abs(me.x - ai.x); targetPower = 45 + (distance * 0.05);
         }
 
+        // הגרלת סוג נשק למחשב אם יש לו מלאי
+        let aiWeaponType = "normal";
+        if (ai.inventory[2] > 0 && Math.random() < 0.3) { aiWeaponType = "cluster"; ai.inventory[2]--; }
+        else if (ai.inventory[3] > 0 && Math.random() < 0.2) { aiWeaponType = "oil"; ai.inventory[3]--; }
+
         targetPower += (Math.random() - 0.5) * 4; targetPower = Math.max(20, Math.min(100, targetPower));
         ai.angle = targetAngle; ai.power = targetPower; aiLastSpecs = { angle: targetAngle, power: targetPower };
 
         const fireRad = (targetAngle * Math.PI) / 180; const speed = targetPower * 0.12;
-        playLaserSound();
-        stats.ai.shots++;
-        projectile = { x: ai.x, y: terrain[ai.x] - aiSpecs.height, vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, owner: 'ai_player' };
+        playLaserSound(); stats.ai.shots++;
+        
+        projectile = { x: ai.x, y: terrain[ai.x] - aiSpecs.height, vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, owner: 'ai_player', wType: aiWeaponType, hasSplit: false };
 
-        currentTurnId = 'local_player';
-        playerMovesLeft = 5;
+        currentTurnId = 'local_player'; playerMovesLeft = 5; updateTopUi();
         setTimeout(() => { updateStatusText(); }, 1500);
     }, 1500);
 }
@@ -314,15 +384,12 @@ function updateStatusText() {
     }
 }
 
-// פונקציה שמציגה את מסך סיום המשחק הרשמי בסגנון רטרו
 function triggerGameOver(playerWon) {
     gameActive = false;
-    
-    // מילוי הנתונים בחלון
+    document.getElementById('game-over-screen').style.display = 'block';
     document.getElementById('go-winner').innerText = playerWon ? "צהובי ניצח את המערכה! 🏆" : "המחשב ניצח את המערכה! 💀";
     document.getElementById('go-title').innerText = playerWon ? "VICTORY" : "GAME OVER";
     document.getElementById('go-title').style.color = playerWon ? "#00ff00" : "#ff3333";
-    document.getElementById('game-over-screen').style.shadowColor = playerWon ? "#00ff00" : "#ff3333";
 
     document.getElementById('stat-shots-player').innerText = stats.player.shots;
     document.getElementById('stat-shots-ai').innerText = stats.ai.shots;
@@ -335,45 +402,65 @@ function triggerGameOver(playerWon) {
     const aiAcc = stats.ai.shots > 0 ? Math.floor((stats.ai.hits / stats.ai.shots) * 100) : 0;
     document.getElementById('stat-acc-player').innerText = pAcc + "%";
     document.getElementById('stat-acc-ai').innerText = aiAcc + "%";
-
     playGameOverSound(playerWon);
-    document.getElementById('game-over-screen').style.display = 'block';
 }
 
-function checkExplosionDamage(craterX) {
+// מנגנון פתיחת חלון בחירה מובנה במוות
+function handlePlayerDeath() {
+    gameActive = false;
+    document.getElementById('respawn-select-overlay').style.display = 'flex';
+}
+
+window.executeRespawn = function(type) {
+    document.getElementById('respawn-select-overlay').style.display = 'none';
+    const p = gamePlayers['local_player'];
+    p.type = type;
+    p.hp = TANK_TYPES[type].maxHp;
+    p.maxHp = TANK_TYPES[type].maxHp;
+    
+    playRespawnSound();
+    gameActive = true;
+    updateTopUi();
+    updateStatusText();
+}
+
+function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
     for (let id in gamePlayers) {
         const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const halfWidth = tSpecs.width / 2;
         let distanceToTank = 0;
         if (craterX < p.x - halfWidth) distanceToTank = (p.x - halfWidth) - craterX;
         else if (craterX > p.x + halfWidth) distanceToTank = craterX - (p.x + halfWidth);
 
-        if (distanceToTank < 35) {
-            const damage = Math.floor((1 - (distanceToTank / 35)) * 50);
+        if (distanceToTank < radius) {
+            const damage = Math.floor((1 - (distanceToTank / radius)) * customMaxDamage);
             if (damage > 0) {
                 p.hp = Math.max(0, p.hp - damage);
-                // ספירת פגיעה מוצלחת בסטטיסטיקה
-                if (damage > 15) {
+                if (damage > 10) {
                     if (id === 'ai_player') stats.player.hits++; 
-                    if (id === 'local_player' || id !== myId) stats.ai.hits++;
+                    if (id === 'local_player') stats.ai.hits++;
                 }
             }
         }
     }
 
-    // ניהול הורדת חיים (Lives) ונוצרות מחדש (Respawn)
     for (let id in gamePlayers) {
         const p = gamePlayers[id];
-        if (p.hp <= 0) {
-            p.lives--; // ירידת חיים
-            
+        if (p.hp <= 0 && gameActive) {
+            p.lives--;
+            updateTopUi();
             if (p.lives > 0) {
-                // נשארו חיים - הטנק נוצר מחדש במקום
-                p.hp = p.maxHp;
-                playRespawnSound();
-                statusDiv.innerText = "💥 " + p.name + " הושמד ואיבד חיים! נוצר מחדש... 💥";
+                if (id === 'local_player') {
+                    handlePlayerDeath(); // פתיחת תפריט הבחירה לשחקן
+                } else {
+                    // המחשב בוחר אקראית דגם חדש
+                    const types = ['medium','heavy','light'];
+                    p.type = types[Math.floor(Math.random()*3)];
+                    p.hp = TANK_TYPES[p.type].maxHp;
+                    p.maxHp = TANK_TYPES[p.type].maxHp;
+                    playRespawnSound();
+                }
             } else {
-                // נגמרו כל 3 החיים - סיום משחק אמיתי
-                triggerGameOver(id !== 'local_player' && id === 'ai_player');
+                triggerGameOver(id !== 'local_player');
                 break;
             }
         }
@@ -391,6 +478,7 @@ function draw() {
     // ציור טנקים
     for (let id in gamePlayers) {
         const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const tankY = terrain[Math.floor(p.x)];
+        if (p.hp <= 0) continue;
         
         ctx.save();
         ctx.fillStyle = '#1e1e1e'; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - 4, tSpecs.width, 4); 
@@ -405,51 +493,153 @@ function draw() {
         ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); 
         ctx.restore();
 
-        // מד חיים (HP)
-        ctx.fillStyle = '#555'; ctx.fillRect(p.x - 25, tankY - tSpecs.height - 13, 50, 4);
-        ctx.fillStyle = p.hp > (p.maxHp * 0.4) ? '#00ff00' : '#ff3333'; ctx.fillRect(p.x - 25, tankY - tSpecs.height - 13, (p.hp / p.maxHp) * 50, 4);
-        
-        // ציור אייקונים של חיים (Lives) כטנקים קטנים מעל מד ה-HP
-        for (let l = 0; l < p.lives; l++) {
-            ctx.fillStyle = p.color;
-            ctx.fillRect(p.x - 22 + (l * 16), tankY - tSpecs.height - 24, 10, 5);
-            ctx.fillRect(p.x - 20 + (l * 16), tankY - tSpecs.height - 27, 6, 3);
+        // הדפסת מד הכוח בלבד מעל ראש הטנק
+        if (id === myId && gameActive && currentTurnId === myId) {
+            ctx.font = "bold 11px monospace"; ctx.fillStyle = "#ffcc00"; ctx.textAlign = "center";
+            ctx.fillText("POWER: " + Math.floor(myPower), p.x, tankY - tSpecs.height - 10);
         }
-
-        ctx.font = "10px sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-        ctx.fillText(p.name, p.x, tankY - tSpecs.height - 32);
     }
 
-    // פגז באוויר
+    // 1. פגז מרכזי באוויר
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
-        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI * 2); ctx.fillStyle = '#ff3333'; ctx.fill();
+        
+        // גרפיקת פגז אליפטי לנשק 3, עיגול לנשקים 1 ו-2
+        ctx.beginPath();
+        if(projectile.wType === 'oil') {
+            ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
+        } else {
+            ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
 
-        if (projectile.x >= 0 && projectile.x < canvas.width) {
-            if (projectile.y >= terrain[Math.floor(projectile.x)]) {
+        // זיהוי שיא הגובה בפרבולה (כאשר המהירות האנכית vy הופכת לשלילית/יורדת)
+        if (!projectile.hasSplit && projectile.vy > 0.2) {
+            // מפצל לנשק 2 (פגז מתפצל)
+            if (projectile.wType === 'cluster') {
+                projectile.hasSplit = true;
+                for (let i = -2; i <= 1; i++) {
+                    clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
+                }
+                projectile = null; // השמדת הפגז המרכזי
+            }
+            // מפצל לנשק 3 (שמן נוזלי)
+            else if (projectile.wType === 'oil') {
+                projectile.hasSplit = true;
+                for (let i = 0; i < 6; i++) {
+                    oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner });
+                }
+                projectile = null;
+            }
+        }
+
+        // פגיעה של הפגז המרכזי
+        if (projectile) {
+            if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
                 const craterX = Math.floor(projectile.x);
                 if (projectile.owner === 'ai_player') aiLastXLand = craterX;
-
                 playExplosionSound();
                 for (let x = craterX - 25; x <= craterX + 25; x++) {
                     if (x >= 0 && x < canvas.width) {
                         const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 25*25 - dist*dist));
-                        terrain[x] += depth;
+                        terrain[x] = Math.min(480, terrain[x] + depth);
                     }
                 }
                 checkExplosionDamage(craterX); projectile = null;
+            } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) {
+                projectile = null;
             }
-        } else { projectile = null; }
+        }
     }
+
+    // 2. ניהול וציור פגזי הפיצול (נשק 2 קטנים)
+    for (let i = clusterProjectiles.length - 1; i >= 0; i--) {
+        let cp = clusterProjectiles[i];
+        cp.vy += gravity; cp.x += cp.vx; cp.y += cp.vy;
+        ctx.beginPath(); ctx.arc(cp.x, cp.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#ff6633'; ctx.fill();
+
+        if (cp.x >= 0 && cp.x < canvas.width && cp.y >= terrain[Math.floor(cp.x)]) {
+            const craterX = Math.floor(cp.x);
+            playExplosionSound();
+            for (let x = craterX - 12; x <= craterX + 12; x++) {
+                if (x >= 0 && x < canvas.width) {
+                    const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 12*12 - dist*dist));
+                    terrain[x] = Math.min(480, terrain[x] + depth);
+                }
+            }
+            checkExplosionDamage(craterX, 22, 18); // נזק קטן יותר לפגז מפוצל
+            clusterProjectiles.splice(i, 1);
+        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) {
+            clusterProjectiles.splice(i, 1);
+        }
+    }
+
+    // 3. ניהול וציור שמן נוזלי גולש (נשק 3)
+    for (let i = oilDrops.length - 1; i >= 0; i--) {
+        let od = oilDrops[i];
+        od.vy += gravity; od.x += od.vx; od.y += od.vy;
+
+        // ברגע שהשמן נוגע באדמה, הוא מתחיל לזרום ולגלוש לצדדים
+        if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
+            od.y = terrain[Math.floor(od.x)];
+            
+            // חישוב כיוון הגלישה לפי שיפוע האדמה סביבו
+            let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)];
+            let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
+            
+            if (leftSlope > rightSlope) { od.vx = 1.5; } // ירידה ימינה
+            else if (rightSlope > leftSlope) { od.vx = -1.5; } // ירידה שמאלה
+            else { od.vx = (Math.random() - 0.5) * 2; } // שטח ישר
+            
+            od.x += od.vx;
+            od.vy = 0; // נשאר צמוד לקרקע
+            
+            // בדיקה אם השמן נוגע ישירות באחד הטנקים בזמן הגלישה
+            for (let id in gamePlayers) {
+                const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
+                if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
+                    p.hp = Math.max(0, p.hp - 4); // נזק שריפה מתמשך קטן לכל טיפה
+                    if (p.hp <= 0 && gameActive) {
+                        p.lives--; updateTopUi();
+                        if(p.lives > 0) { if(id === 'local_player') handlePlayerDeath(); else { p.hp=p.maxHp; playRespawnSound(); } }
+                        else triggerGameOver(id !== 'local_player');
+                    }
+                    oilDrops.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        // ציור טיפת השמן הזורחת
+        ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
+
+        // מחיקה אם עף מהמסך או סיים לזרום
+        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height) {
+            oilDrops.splice(i, 1);
+        }
+    }
+
     requestAnimationFrame(draw);
 }
 
 let activeKeys = {};
-window.addEventListener('keydown', (e) => { activeKeys[e.key] = true; });
+window.addEventListener('keydown', (e) => { 
+    activeKeys[e.key] = true; 
+    
+    // החלפת נשקים במחסנית [1, 2, 3]
+    if (e.key === '1' || e.key === '2' || e.key === '3') {
+        const keyNum = parseInt(e.key);
+        if (playerInventory[keyNum]) {
+            selectedWeaponKey = keyNum;
+            playMoveSound();
+            updateTopUi();
+        }
+    }
+});
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
 function handleGameControls() {
-    if (!gameActive || currentTurnId !== myId || projectile) return;
+    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
 
     const me = gamePlayers[myId];
     let changed = false;
@@ -486,26 +676,40 @@ function handleGameControls() {
     }
 
     if (activeKeys[' ']) {
-        activeKeys[' '] = false; 
+        activeKeys[' '] = false;
+        
+        // בדיקת מלאי תחמושת לנשק הנבחר
+        const activeWeapon = playerInventory[selectedWeaponKey];
+        if (activeWeapon.ammo <= 0) {
+            statusDiv.innerText = `⚠️ נגמרה התחמושת עבור ${activeWeapon.name}! בחר נשק אחר [1]`;
+            statusDiv.style.color = "#ff3333";
+            return;
+        }
+
+        // הורדת מלאי במידה ולא מדובר בפגז אינסופי
+        if (activeWeapon.ammo !== Infinity) {
+            activeWeapon.ammo--;
+        }
+
         const rad = (myAngle * Math.PI) / 180;
         const speed = myPower * 0.12;
         const tSpecs = TANK_TYPES[me.type];
         
         playLaserSound();
         stats.player.shots++;
+        updateTopUi();
 
         if (isAiMode) {
-            projectile = { x: me.x, y: terrain[Math.floor(me.x)] - tSpecs.height, vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'local_player' };
+            projectile = { x: me.x, y: terrain[Math.floor(me.x)] - tSpecs.height, vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, owner: 'local_player', wType: activeWeapon.type, hasSplit: false };
             currentTurnId = 'ai_player';
             playerMovesLeft = 5;
             setTimeout(() => { updateStatusText(); }, 1500);
         } else {
-            socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed });
+            socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
         }
     }
 }
 
-// פונקציות תפריטים וסיום
 window.restartGame = function() {
     document.getElementById('game-over-screen').style.display = 'none';
     openTankSelection();
@@ -513,10 +717,9 @@ window.restartGame = function() {
 
 window.backToMenu = function() {
     document.getElementById('game-over-screen').style.display = 'none';
-    canvas.style.display = 'none';
+    document.getElementById('game-container').style.display = 'none';
     statusDiv.style.display = 'none';
     document.getElementById('controls-info').style.display = 'none';
-    document.getElementById('gameTitle').style.display = 'none';
     document.getElementById('menu').style.display = 'block';
 }
 
