@@ -44,7 +44,6 @@
 </head>
 <body>
 
-    <!-- שלב 1: מסך רישום והתחברות לשחקן -->
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים - רישום</h2>
         <label>כינוי קרב:</label>
@@ -63,7 +62,6 @@
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
     </div>
 
-    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים -->
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
         <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
@@ -97,7 +95,6 @@
         <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
     </div>
 
-    <!-- זירת המשחק המרכזית -->
     <div id="game-container">
         <div id="respawn-select-overlay">
             <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
@@ -113,7 +110,6 @@
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
 
-    <!-- מסך סיכום -->
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
@@ -285,6 +281,11 @@ function connectToLobby() {
         gameActive = true;
         rebuildTopUi();
         updateStatusText();
+        
+        // אתחול מנוע הציור מיד עם פתיחת המסך כדי למנוע מסך שחור
+        requestAnimationFrame(draw);
+        
+        // הפעלת תור הבוט במידה והוא ראשון
         checkAndRunAiTurn();
     });
 
@@ -366,8 +367,6 @@ function checkAndRunAiTurn() {
         if (currentTurnId === myId || !gameActive) return;
         
         const ai = gamePlayers[currentTurnId];
-        const aiSpecs = TANK_TYPES[ai.type];
-        
         let targets = turnOrder.filter(id => id !== currentTurnId && gamePlayers[id] && gamePlayers[id].hp > 0);
         if(targets.length === 0) return;
         let targetPlayer = gamePlayers[targets[Math.floor(Math.random() * targets.length)]];
@@ -384,12 +383,10 @@ function checkAndRunAiTurn() {
         
         let aiWeaponType = "normal";
         if (Math.random() < 0.25) aiWeaponType = "cluster";
-        else if (Math.random() < 0.15) aiWeaponType = "oil";
 
         const fireRad = (spec.angle * Math.PI) / 180;
         const speed = spec.power * 0.12;
         
-        // הבוט מודיע לשרת שהוא מסיים תור ויורה
         socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
     }, 1500);
 }
@@ -470,7 +467,7 @@ function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
             } else {
                 let activePlayers = turnOrder.filter(pid => gamePlayers[pid] && gamePlayers[pid].lives > 0);
                 if (activePlayers.length <= 1) {
-                    let winnerName = activePlayers.length === 1 ? gamePlayers[activeActive[0]].name : "אף אחד";
+                    let winnerName = activePlayers.length === 1 ? gamePlayers[activePlayers[0]].name : "אף אחד";
                     triggerGameOver(winnerName);
                     break;
                 }
@@ -504,6 +501,7 @@ function triggerGameOver(winnerName) {
 }
 
 function draw() {
+    if (!gameActive) return;
     drawSkyAndCelestialBodies();
     
     ctx.beginPath(); ctx.moveTo(0, canvas.height);
@@ -536,36 +534,24 @@ function draw() {
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
         ctx.beginPath();
-        if(projectile.wType === 'oil') ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
-        else ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
+        ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff3333'; ctx.fill();
 
-        if (!projectile.hasSplit && projectile.vy > 0.2) {
-            if (projectile.wType === 'cluster') {
-                projectile.hasSplit = true;
-                for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
-                projectile = null; 
-            } else if (projectile.wType === 'oil') {
-                projectile.hasSplit = true;
-                for (let i = 0; i < 6; i++) oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner, life: 150 });
-                projectile = null;
-            }
+        if (!projectile.hasSplit && projectile.vy > 0.2 && projectile.wType === 'cluster') {
+            projectile.hasSplit = true;
+            for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
+            projectile = null; 
         }
 
         if (projectile) {
             if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
                 const craterX = Math.floor(projectile.x);
-                if (projectile.owner === 'ai_player') aiLastXLand = craterX;
                 playExplosionSound();
                 for (let x = craterX - 25; x <= craterX + 25; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 25*25 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
                 checkExplosionDamage(craterX); 
-                
                 let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
                 projectile = null; 
-                
-                if (wasAi) {
-                    socket.emit('aiFinishedTurn');
-                }
+                if (wasAi) socket.emit('aiFinishedTurn');
             } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) { 
                 let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
                 projectile = null; 
@@ -583,39 +569,13 @@ function draw() {
             checkExplosionDamage(craterX, 22, 18); 
             let ownerId = cp.owner;
             clusterProjectiles.splice(i, 1);
-            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
+            if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
                 socket.emit('aiFinishedTurn');
             }
         } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { 
             let ownerId = cp.owner;
             clusterProjectiles.splice(i, 1); 
-            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
-                socket.emit('aiFinishedTurn');
-            }
-        }
-    }
-
-    for (let i = oilDrops.length - 1; i >= 0; i--) {
-        let od = oilDrops[i]; od.life--; od.vy += gravity; od.x += od.vx; od.y += od.vy;
-        if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
-            od.y = terrain[Math.floor(od.x)];
-            let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)]; let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
-            if (leftSlope > rightSlope) od.vx = 1.5; else if (rightSlope > leftSlope) od.vx = -1.5; else od.vx = (Math.random() - 0.5) * 1.5;
-            od.x += od.vx; od.vy = 0;
-            for (let id in gamePlayers) {
-                const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
-                if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
-                    p.hp = Math.max(0, p.hp - 4); rebuildTopUi();
-                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(p.lives > 0) { if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; } else { let alive = turnOrder.filter(pid => gamePlayers[pid].lives > 0); if(alive.length <= 1) triggerGameOver(alive.length === 1 ? gamePlayers[alive[0]].name : "אף אחד"); } }
-                    od.life = 0; break;
-                }
-            }
-        }
-        ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
-        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height || od.life <= 0) {
-            let ownerId = od.owner;
-            oilDrops.splice(i, 1);
-            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
+            if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) {
                 socket.emit('aiFinishedTurn');
             }
         }
@@ -631,7 +591,7 @@ function endTurnWithMovement() {
 let activeKeys = {};
 window.addEventListener('keydown', (e) => { 
     activeKeys[e.key] = true; 
-    if (e.key === '1' || e.key === '2' || e.key === '3') {
+    if (e.key === '1' || e.key === '2') {
         const keyNum = parseInt(e.key);
         if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); }
     }
@@ -639,7 +599,7 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
 function handleGameControls() {
-    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
+    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0) return;
     const me = gamePlayers[myId]; if(!me || me.hp <= 0) return;
     let changed = false;
 
@@ -686,7 +646,7 @@ function updateStatusText() {
     }
 }
 
-function showGameLayout() { document.getElementById('menu').style.display = 'none'; document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-container').style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
+function showGameLayout() { document.getElementById('login-panel').style.display = 'none'; document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-container').style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
 setInterval(handleGameControls, 50);
 </script>
 </body>
