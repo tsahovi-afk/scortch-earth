@@ -65,7 +65,6 @@
 </head>
 <body>
 
-    <!-- שלב 1: מסך רישום והתחברות לשחקן -->
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים - רישום</h2>
         <label>כינוי קרב:</label>
@@ -92,7 +91,6 @@
         </div>
     </div>
 
-    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים -->
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
         <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
@@ -126,7 +124,6 @@
         <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
     </div>
 
-    <!-- זירת המשחק המרכזית -->
     <div id="game-container">
         <div id="respawn-select-overlay">
             <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
@@ -142,7 +139,6 @@
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
 
-    <!-- מסך סיכום -->
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
@@ -471,61 +467,58 @@ function rebuildTopUi() {
     });
 }
 
-// 🤖 תיקון פונקציית הבינה המלאכותית - אטומה, מהירה וחסינת קריסות
 function checkAndRunAiTurn() {
     if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
     
     statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
     statusDiv.style.color = "#ff3333";
 
+    // שלב 1: ניתוח מפה (2 שניות)
     setTimeout(() => {
         if (currentTurnId === myId || !gameActive || projectile) return;
         
         const ai = gamePlayers[currentTurnId];
         
-        // 🛠️ תיקון: מציאת השחקן האנושי המקומי של הדפדפן שלך באופן ישיר (בלי פילטרים שעלולים להיכשל)
+        // בחירת טנק רנדומלי אם צריך
+        if (ai.hp <= 0 && ai.lives > 0) {
+            const types = ['medium', 'heavy', 'light'];
+            ai.type = types[Math.floor(Math.random() * types.length)];
+            ai.hp = TANK_TYPES[ai.type].maxHp;
+            ai.maxHp = TANK_TYPES[ai.type].maxHp;
+            rebuildTopUi();
+        }
+
         let targetPlayer = gamePlayers[myId] || Object.values(gamePlayers).find(p => !p.isAi && p.hp > 0);
-        
-        // רשת ביטחון קיצונית: אם לא נמצא שחקן אנושי בכלל, בחר שחקן אחר חי אקראי
         if (!targetPlayer) {
             let livingTargets = turnOrder.filter(id => id !== currentTurnId && gamePlayers[id] && gamePlayers[id].hp > 0);
             if (livingTargets.length > 0) targetPlayer = gamePlayers[livingTargets[0]];
         }
         
-        // אם באמת אין שום מטרה חיה במפה, שחרר את התור מיד
         if (!targetPlayer) {
             socket.emit('aiFinishedTurn');
             return;
         }
 
-        // חישוב זווית קשיח ויציב לפי כיוון המטרה (ימין או שמאל)
-        let targetAngle = ai.x > targetPlayer.x ? 135 : 45;
-        // הוספת תיקון זווית קל מבוסס מרחק כדי שהירי יהיה קרוב והגיוני
-        let distance = Math.abs(ai.x - targetPlayer.x);
+        // שלב 2: תזמון פעולה רנדומלי (עד 10 שניות)
+        setTimeout(() => {
+            let targetAngle = ai.x > targetPlayer.x ? 135 : 45;
+            let distance = Math.abs(ai.x - targetPlayer.x);
+            let targetPower = 40 + (distance * 0.06);
+            targetPower = Math.max(30, Math.min(92, targetPower));
+            targetAngle += (Math.random() - 0.5) * 15;
+
+            ai.angle = targetAngle;
+            ai.power = targetPower;
+
+            let aiWeaponType = ["normal", "cluster", "oil"][Math.floor(Math.random() * 3)];
+
+            const fireRad = (targetAngle * Math.PI) / 180;
+            const speed = targetPower * 0.12;
+            
+            socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
+        }, Math.random() * 10000);
         
-        // התאמת עוצמה אוטומטית לפי המרחק במפה ללא לולאות מורכבות
-        let targetPower = 40 + (distance * 0.06);
-        targetPower = Math.max(30, Math.min(92, targetPower));
-
-        // הוספת גיוון קל בכוונות של הבוט
-        targetAngle += (Math.random() - 0.5) * 15;
-
-        ai.angle = targetAngle;
-        ai.power = targetPower;
-
-        // בחירת מחסנית אקראית לבוט
-        let aiWeaponType = "normal";
-        let rand = Math.random();
-        if (rand < 0.25) aiWeaponType = "cluster";
-        else if (rand < 0.40) aiWeaponType = "oil";
-
-        const fireRad = (targetAngle * Math.PI) / 180;
-        const speed = targetPower * 0.12;
-        
-        // ביצוע הירי ושיגור הפקודה הרשמית לשרת
-        clearInterval(turnTimerInterval); 
-        socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
-    }, 1000); // הפחתת השהיית המחשב לשנייה אחת בלבד בשביל קצב מהיר
+    }, 2000); 
 }
 
 function drawSkyAndCelestialBodies() {
