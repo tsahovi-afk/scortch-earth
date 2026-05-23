@@ -8,53 +8,42 @@
         body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none; }
         #game-container { position: relative; display: none; }
         canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; max-width: 100vw; height: auto; }
-        
         .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 20px; pointer-events: none; font-family: monospace; }
         .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 5px 10px; border-radius: 4px; min-width: 110px; text-align: center; box-shadow: 0 0 10px rgba(255, 204, 0, 0.1); }
         .ui-panel-box h3 { margin: 0 0 2px 0; font-size: 13px; text-shadow: 1px 1px #000; }
         .ui-panel-box div { font-size: 11px; margin: 1px 0; }
         .active-turn-box { border-color: #00ff00 !important; box-shadow: 0 0 15px #00ff00 !important; }
-
         #turn-timer-display { background: #000; border: 3px double #ffcc00; color: #ffcc00; font-size: 24px; font-weight: bold; padding: 5px 15px; border-radius: 4px; min-width: 50px; text-align: center; text-shadow: 0 0 8px #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.3); }
-
         #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; text-align: center; }
         #controls-info { margin-top: 5px; font-size: 13px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
-        
         .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; max-width: 90vw; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); box-sizing: border-box; }
         h2 { margin-top: 0; color: #ffcc00; font-size: 22px; }
         label { display: block; text-align: right; margin: 8px 0 4px 0; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 8px; box-sizing: border-box; background: #333; color: #fff; border: 1px solid #ffcc00; border-radius: 4px; font-size: 14px; }
-        
         button { background-color: #ffcc00; color: #000; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; margin: 12px 4px 0 4px; cursor: pointer; border-radius: 5px; transition: 0.2s; box-shadow: 3px 3px 0px #997a00; }
         button:hover { background-color: #ffee55; transform: scale(1.03); }
         button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px #997a00; }
-        
         .color-picker-grid { display: flex; justify-content: space-between; gap: 6px; margin: 10px 0 15px 0; background: #111; padding: 8px; border-radius: 6px; border: 1px solid #444; }
         .color-dot { display: block; width: 45px; height: 35px; border: 2px solid #444; cursor: pointer; border-radius: 4px; transition: 0.1s; }
         .color-dot:hover { transform: scale(1.08); border-color: #aaa; }
         .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; transform: scale(1.05); }
-
         .share-container { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555; display: flex; flex-direction: column; align-items: center; }
         .share-label { font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold; text-align: center; }
         .share-row { display: flex; width: 100%; gap: 5px; }
         .share-link-input { font-family: monospace; background: #111; color: #ffcc00; border: 1px solid #444; padding: 6px; font-size: 12px; border-radius: 4px; text-align: center; pointer-events: none; width: 70%; }
         .btn-copy { background: #333; color: #ffcc00; border: 1px solid #ffcc00; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 30%; box-shadow: none; margin: 0; }
-
         #respawn-select-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5; align-items: center; justify-content: center; }
         .tank-option { background: #333; border: 1px solid #555; padding: 10px; margin: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
         .tank-option:hover { border-color: #ffcc00; background: #3c3c3c; }
-
         #game-over-screen { display: none; position: absolute; z-index: 10; background-color: rgba(10, 10, 15, 0.95); border: 4px double #ffcc00; padding: 30px; text-align: center; min-width: 350px; box-shadow: 0 0 30px #ff3333; }
         .game-over-title { font-size: 30px; font-weight: bold; color: #ff3333; margin-bottom: 15px; }
         .stats-table { width: 100%; margin: 15px 0; border-collapse: collapse; text-align: right; font-size: 13px; }
         .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 6px; }
         .stats-table td { padding: 6px; border-bottom: 1px solid #444; }
-
         #mobile-controls { display: none; width: 100%; max-width: 800px; justify-content: space-between; padding: 10px 20px; box-sizing: border-box; background: #151515; border-top: 2px solid #ffcc00; margin-top: auto; }
         .touch-group { display: grid; gap: 8px; }
         .left-dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 45px); }
         .right-buttons { grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(2, 45px); justify-items: center; align-items: center; }
-        
         .touch-btn { background: #222; color: #ffcc00; border: 2px solid #ffcc00; font-size: 16px; font-weight: bold; border-radius: 6px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; cursor: pointer; touch-action: manipulation; }
         .touch-btn:active { background: #ffcc00; color: #000; }
         .btn-fire-mobile { background: #cc2222; color: #fff; border-color: #ff3333; grid-column: span 2; grid-row: span 2; font-size: 18px; text-shadow: 1px 1px #000; height: 100%; }
@@ -64,12 +53,10 @@
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים - רישום</h2>
         <label>כינוי קרב:</label>
         <input type="text" id="player-name-input" value="צהובי">
-        
         <label>בחר צבע מותג:</label>
         <div class="color-picker-grid">
             <div class="color-dot selected" style="background-color:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div>
@@ -79,191 +66,100 @@
             <div class="color-dot" style="background-color:#ffffff" onclick="pickColor(this, '#ffffff')"></div>
             <div class="color-dot" style="background-color:#222222; border: 2px dashed #ffcc00" onclick="pickColor(this, '#222222')"></div>
         </div>
-
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
-
         <div class="share-container">
             <div class="share-label">🔗 שלח לחבר כדי שישחק איתך אונליין:</div>
-            <div class="share-row">
-                <input type="text" id="share-link-field" class="share-link-input" value="טוען קישור...">
-                <button id="copy-link-btn" class="btn-copy" onclick="copyGameUrl()">📋 העתק</button>
-            </div>
+            <div class="share-row"><input type="text" id="share-link-field" class="share-link-input" value="טוען קישור..."><button id="copy-link-btn" class="btn-copy" onclick="copyGameUrl()">📋 העתק</button></div>
         </div>
     </div>
-
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
         <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
-        
-        <label>סה"כ שחקנים בזירה (שחקנים + מחשב):</label>
-        <select id="total-players-select">
-            <option value="2" selected>2 משתתפים</option>
-            <option value="3">3 משתתפים</option>
-            <option value="4">4 משתתפים</option>
-            <option value="5">5 משתתפים</option>
-            <option value="6">6 משתתפים</option>
-        </select>
-
-        <label>מתוכם - כמה יהיו בוטים של מחשב (AI)?</label>
-        <select id="ai-players-select">
-            <option value="0">0 בוטים (רק שחקני אונליין)</option>
-            <option value="1" selected>1 בוט מחשב</option>
-            <option value="2">2 בוטים של מחשב</option>
-            <option value="3">3 בוטים של מחשב</option>
-            <option value="4">4 בוטים של מחשב</option>
-            <option value="5">5 בוטים של מחשב</option>
-        </select>
-
-        <label>בחר דגם טנק פתיחה:</label>
-        <select id="start-tank-type">
-            <option value="medium">🚀 טנק צייד (Medium - 100 HP)</option>
-            <option value="heavy">🐘 טנק ממותה (Heavy - 150 HP)</option>
-            <option value="light">⚡ טנק זיקית (Light - 75 HP)</option>
-        </select>
-
+        <label>סה"כ שחקנים בזירה:</label>
+        <select id="total-players-select"><option value="2" selected>2 משתתפים</option><option value="3">3 משתתפים</option><option value="4">4 משתתפים</option></select>
+        <label>כמה בוטים של מחשב (AI)?</label>
+        <select id="ai-players-select"><option value="1" selected>1 בוט</option><option value="2">2 בוטים</option></select>
+        <label>בחר דגם טנק:</label>
+        <select id="start-tank-type"><option value="medium">טנק צייד</option><option value="heavy">טנק ממותה</option></select>
         <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
     </div>
-
     <div id="game-container">
         <div id="respawn-select-overlay">
             <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
                 <h3 style="color: #ff3333; margin-top: 0; font-size:18px;">💥 הטנק שלך נהרס! 💥</h3>
-                <p style="font-size:14px;">בחר דגם חדש כדי לחזור מיד במקום שלך לזירה:</p>
-                <div class="tank-option" onclick="executeRespawn('medium')"><strong>🚀 טנק צייד</strong> (100 HP)</div>
-                <div class="tank-option" onclick="executeRespawn('heavy')"><strong>🐘 טנק ממותה</strong> (150 HP)</div>
-                <div class="tank-option" onclick="executeRespawn('light')"><strong>⚡ טנק זיקית</strong> (75 HP)</div>
+                <div class="tank-option" onclick="executeRespawn('medium')">🚀 טנק צייד</div>
+                <div class="tank-option" onclick="executeRespawn('heavy')">🐘 טנק ממותה</div>
             </div>
         </div>
-
         <div id="dynamic-ui-bar" class="ui-bar"></div>
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
-
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
-        
-        <table class="stats-table">
-            <thead>
-                <tr>
-                    <th>סטטיסטיקת המערכה</th>
-                    <th style="color: #ffcc00;">אתה</th>
-                    <th style="color: #ff3333;">המחשב/אחר</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>פגזים שנורו בזירה</td>
-                    <td id="stat-shots-player">0</td>
-                    <td id="stat-shots-ai">0</td>
-                </tr>
-                <tr>
-                    <td>פגיעות מוצלחות</td>
-                    <td id="stat-hits-player">0</td>
-                    <td id="stat-hits-ai">0</td>
-                </tr>
-                <tr>
-                    <td>צעדי תמרון ודלק</td>
-                    <td id="stat-moves-player">0</td>
-                    <td id="stat-moves-ai">0</td>
-                </tr>
-            </tbody>
-        </table>
-
         <button onclick="location.reload()">🔄 משחק חדש</button>
     </div>
-
     <div id="mobile-controls">
         <div class="touch-group left-dpad">
             <div></div><div class="touch-btn" id="m-up">▲</div><div></div>
             <div class="touch-btn" id="m-left">◀</div><div class="touch-btn" id="m-shift" style="font-size:12px;">SHIFT</div><div class="touch-btn" id="m-right">▶</div>
             <div></div><div class="touch-btn" id="m-down">▼</div><div></div>
         </div>
-        
         <div class="touch-group right-buttons">
-            <div class="touch-btn" id="m-w1">1</div>
-            <div class="touch-btn" id="m-w2">2</div>
-            <div class="touch-btn" id="m-w3">3</div>
-            <div></div>
-            <div class="touch-btn btn-fire-mobile" id="m-fire">FIRE</div>
+            <div class="touch-btn" id="m-w1">1</div><div class="touch-btn" id="m-w2">2</div><div class="touch-btn" id="m-fire">FIRE</div>
         </div>
     </div>
-
     <div id="status">טוען...</div>
-    <div id="controls-info">
-        <strong>קנה וכוח:</strong> חצים למעלה/למטה (זווית), חצים ימינה/שמאלה (עוצמה) | <strong>🔥 אש:</strong> רווח<br>
-        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3) | מקש [3] פצצת שמן נוזלי (3)<br>
-        <strong>🚙 תנועה טקטית:</strong> Shift + חץ ימינה/שמאלה (עד 5 צעדים בתור, זזת - התור עובר!)
-    </div>
-
-<script>
-let socket;
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const statusDiv = document.getElementById('status');
-
-let myId = '';
-let gameActive = false;
-let currentTurnId = null;
-let gamePlayers = {};
-let turnOrder = [];
-let projectile = null;
-let clusterProjectiles = []; 
-let oilDrops = [];
-const gravity = 0.15;
-let playerMovesLeft = 5;
-let totalShotsFiredInGame = 0;
-let chosenColor = '#ffcc00';
-let turnSecondsLeft = 10;
-let turnTimerInterval = null;
-
-let playerInventory = {
-    1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
-    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
-    3: { name: "שמן נוזלי", ammo: 3, type: "oil" }
-};
-let selectedWeaponKey = 1;
-let stats = { player: { shots: 0, hits: 0, moves: 0 }, globalOther: { shots: 0, hits: 0, moves: 0 } };
-
-const TANK_TYPES = {
-    medium: { width: 24, height: 12, maxHp: 100 },
-    heavy: { width: 34, height: 16, maxHp: 150 },
-    light: { width: 16, height: 8, maxHp: 75 }
-};
-
-const terrain = [];
-let myAngle = 45;
-let myPower = 50;
-
-function checkAndRunAiTurn() {
-    if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
-    
-    statusDiv.innerText = "המחשב מנתח מפה...";
-    
-    // ניתוח במשך 7 שניות
-    setTimeout(() => {
-        if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
+    <div id="controls-info"><strong>🔥 אש:</strong> רווח | <strong>🚙 תנועה:</strong> Shift + חצים</div>
+    <script>
+        let socket, gameActive = false, currentTurnId = null, gamePlayers = {}, projectile = null;
+        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d'), statusDiv = document.getElementById('status');
         
-        statusDiv.innerText = "המחשב מכוון ויורה...";
-        
-        // ירי ב-3 השניות האחרונות
-        setTimeout(() => {
+        function connectToLobby() {
+            document.getElementById('login-panel').style.display = 'none';
+            socket = io();
+            socket.on('connect', () => { socket.emit('joinLobby', { name: 'צהובי', color: '#ffcc00' }); });
+            socket.on('gameStarted', (data) => {
+                gamePlayers = data.players; currentTurnId = data.currentTurnId;
+                document.getElementById('lobby-panel').style.display = 'none';
+                document.getElementById('game-container').style.display = 'block';
+                gameActive = true; requestAnimationFrame(draw); checkAndRunAiTurn();
+            });
+            socket.on('playerFired', (data) => {
+                const p = gamePlayers[data.id];
+                projectile = { x: p.x, y: 300, vx: data.vx, vy: data.vy, owner: data.id };
+            });
+        }
+
+        function checkAndRunAiTurn() {
             if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
-            const ai = gamePlayers[currentTurnId];
-            let target = Object.values(gamePlayers).find(p => p.id !== ai.id && p.hp > 0);
-            if (target) {
-                let angle = ai.x > target.x ? 135 : 45;
-                let power = 60;
+            statusDiv.innerText = "המחשב מנתח...";
+            setTimeout(() => {
+                statusDiv.innerText = "המחשב יורה!";
+                let ai = gamePlayers[currentTurnId];
+                let target = Object.values(gamePlayers).find(p => p.id !== ai.id);
+                let angle = ai.x > (target ? target.x : 400) ? 135 : 45;
                 const rad = (angle * Math.PI) / 180;
-                const speed = power * 0.12;
-                socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: 'normal' });
-            }
-        }, 3000);
-    }, 7000);
-}
+                socket.emit('fire', { vx: Math.cos(rad) * 8, vy: -Math.sin(rad) * 8, wType: 'normal' });
+            }, 3000);
+        }
 
-// שאר הלוגיקה שלך ללא שינוי (המשך ה-script המקורי שלך...)
-// (הערה: צירפתי את הפונקציה המתוקנת למעלה. ניתן להעתיק את כל הבלוק הזה לתוך ה-script שלך)
-</script>
+        function draw() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, 800, 500);
+            for (let id in gamePlayers) {
+                let p = gamePlayers[id];
+                ctx.fillStyle = p.color; ctx.fillRect(p.x, 300, 30, 20);
+            }
+            if (projectile) {
+                projectile.x += projectile.vx; projectile.y += projectile.vy;
+                ctx.fillStyle = 'red'; ctx.fillRect(projectile.x, projectile.y, 5, 5);
+                if (projectile.y > 400) { projectile = null; if (gamePlayers[currentTurnId]?.isAi) socket.emit('aiFinishedTurn'); }
+            }
+            requestAnimationFrame(draw);
+        }
+
+        function startGameEngine() { socket.emit('startConfiguredGame', {}); }
+    </script>
 </body>
 </html>
