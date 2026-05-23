@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - מהדורת 6 שחקנים ומחזור שמיים דינמי</title>
+    <title>טנקים נגד טנקים - מהדורת 6 שחקנים עם טיימר 10 שניות</title>
     <style>
         body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
         #game-container { position: relative; display: none; }
@@ -13,6 +13,9 @@
         .ui-panel-box h3 { margin: 0 0 2px 0; font-size: 13px; text-shadow: 1px 1px #000; }
         .ui-panel-box div { font-size: 11px; margin: 1px 0; }
         .active-turn-box { border-color: #00ff00 !important; box-shadow: 0 0 15px #00ff00 !important; }
+
+        /* שעון טיימר דיגיטלי במרכז למעלה */
+        #turn-timer-display { background: #000; border: 3px double #ffcc00; color: #ff3333; font-size: 24px; font-weight: bold; padding: 5px 15px; border-radius: 4px; min-width: 50px; text-align: center; text-shadow: 0 0 8px #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.3); }
 
         #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; }
         #controls-info { margin-top: 5px; font-size: 13px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
@@ -44,6 +47,7 @@
 </head>
 <body>
 
+    <!-- שלב 1: מסך רישום והתחברות לשחקן -->
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים - רישום</h2>
         <label>כינוי קרב:</label>
@@ -62,6 +66,7 @@
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
     </div>
 
+    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים -->
     <div id="lobby-panel" class="panel" style="display:none;">
         <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
         <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
@@ -95,6 +100,7 @@
         <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
     </div>
 
+    <!-- זירת המשחק המרכזית -->
     <div id="game-container">
         <div id="respawn-select-overlay">
             <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
@@ -110,6 +116,7 @@
         <canvas id="gameCanvas" width="800" height="500"></canvas>
     </div>
 
+    <!-- מסך סיכום -->
     <div id="game-over-screen">
         <div id="go-title" class="game-over-title">GAME OVER</div>
         <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
@@ -147,7 +154,7 @@
     <div id="status">טוען...</div>
     <div id="controls-info">
         <strong>קנה וכוח:</strong> חצים למעלה/למטה (זווית), חצים ימינה/שמאלה (עוצמה) | <strong>🔥 אש:</strong> רווח<br>
-        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3) | מקש [3] פצצת שמן נוזלי (3)<br>
+        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3)<br>
         <strong>🚙 תנועה טקטית:</strong> Shift + חץ ימינה/שמאלה (עד 5 צעדים בתור, זזת - התור עובר!)
     </div>
 
@@ -166,7 +173,6 @@ let gamePlayers = {};
 let turnOrder = [];
 let projectile = null;
 let clusterProjectiles = []; 
-let oilDrops = []; 
 const gravity = 0.15;
 
 let aiLastSpecs = {};
@@ -175,10 +181,13 @@ let playerMovesLeft = 5;
 let totalShotsFiredInGame = 0;
 let chosenColor = '#ffcc00';
 
+// משתני מערכת טיימר 10 שניות דינמי
+let turnSecondsLeft = 10;
+let turnTimerInterval = null;
+
 let playerInventory = {
     1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
-    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
-    3: { name: "שמן נוזלי", ammo: 3, type: "oil" }
+    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" }
 };
 let selectedWeaponKey = 1;
 
@@ -282,10 +291,8 @@ function connectToLobby() {
         rebuildTopUi();
         updateStatusText();
         
-        // אתחול מנוע הציור מיד עם פתיחת המסך כדי למנוע מסך שחור
         requestAnimationFrame(draw);
-        
-        // הפעלת תור הבוט במידה והוא ראשון
+        startTurnTimer(); // התחלת שעון ראשון
         checkAndRunAiTurn();
     });
 
@@ -319,8 +326,53 @@ function connectToLobby() {
         currentTurnId = data.currentTurnId;
         playerMovesLeft = 5;
         rebuildTopUi();
+        startTurnTimer(); // התחלת שעון חדש בכל מעבר תור
         setTimeout(() => { updateStatusText(); checkAndRunAiTurn(); }, 1200);
     });
+}
+
+// פונקציות ניהול טיימר 10 שניות
+function startTurnTimer() {
+    clearInterval(turnTimerInterval);
+    turnSecondsLeft = 10;
+    updateTimerDisplay();
+    
+    turnTimerInterval = setInterval(() => {
+        if (!gameActive || projectile) return; // עצירת השעון בזמן מעוף פגז
+        
+        turnSecondsLeft--;
+        updateTimerDisplay();
+        
+        if (turnSecondsLeft <= 0) {
+            clearInterval(turnTimerInterval);
+            statusDiv.innerText = "⏱️ נגמר הזמן! התור עובר אוטומטית...";
+            statusDiv.style.color = "#ff3333";
+            
+            if (currentTurnId === myId) {
+                endTurnWithMovement(); // העברת תור אקטיבית של השחקן
+            } else if (gamePlayers[currentTurnId] && gamePlayers[currentTurnId].isAi) {
+                socket.emit('aiFinishedTurn'); // שחרור השרת אם הבוט נתקע
+            }
+        }
+    }, 1000);
+}
+
+// פונקציית איפוס ידנית שמופעלת בכל נגיעה בכוונות
+function resetTurnTimerOnAim() {
+    if (currentTurnId === myId && gameActive && !projectile) {
+        turnSecondsLeft = 10;
+        updateTimerDisplay();
+    }
+}
+
+function updateTimerDisplay() {
+    const timerBox = document.getElementById('turn-timer-display');
+    if (timerBox) {
+        timerBox.innerText = turnSecondsLeft;
+        // שינוי צבע הבהוב בשניות האחרונות
+        timerBox.style.color = turnSecondsLeft <= 3 ? "#ff0000" : "#ffcc00";
+        timerBox.style.borderColor = turnSecondsLeft <= 3 ? "#ff0000" : "#ffcc00";
+    }
 }
 
 function startGameEngine() {
@@ -338,6 +390,12 @@ function startGameEngine() {
 function rebuildTopUi() {
     const uiBar = document.getElementById('dynamic-ui-bar');
     uiBar.innerHTML = '';
+    
+    // הוספת השעון הדיגיטלי למרכז המדויק של לוח ה-UI
+    const timerElement = document.createElement('div');
+    timerElement.id = 'turn-timer-display';
+    timerElement.innerText = turnSecondsLeft;
+    uiBar.appendChild(timerElement);
     
     turnOrder.forEach(id => {
         const p = gamePlayers[id];
@@ -364,7 +422,7 @@ function checkAndRunAiTurn() {
     statusDiv.style.color = "#ff3333";
 
     setTimeout(() => {
-        if (currentTurnId === myId || !gameActive) return;
+        if (currentTurnId === myId || !gameActive || projectile) return;
         
         const ai = gamePlayers[currentTurnId];
         let targets = turnOrder.filter(id => id !== currentTurnId && gamePlayers[id] && gamePlayers[id].hp > 0);
@@ -380,13 +438,13 @@ function checkAndRunAiTurn() {
         spec.power = Math.max(25, Math.min(95, spec.power));
         
         aiLastSpecs[currentTurnId] = spec;
-        
         let aiWeaponType = "normal";
         if (Math.random() < 0.25) aiWeaponType = "cluster";
 
         const fireRad = (spec.angle * Math.PI) / 180;
         const speed = spec.power * 0.12;
         
+        clearInterval(turnTimerInterval); // עצירת שעון הבוט ברגע שהוא יורה
         socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
     }, 1500);
 }
@@ -477,6 +535,7 @@ function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
 }
 
 function handlePlayerDeath() {
+    clearInterval(turnTimerInterval); // עצירת שעון בזמן בחירת טנק במוות
     document.getElementById('respawn-select-overlay').style.display = 'flex';
 }
 
@@ -485,10 +544,12 @@ window.executeRespawn = function(type) {
     const p = gamePlayers[myId];
     p.type = type; p.hp = TANK_TYPES[type].maxHp; p.maxHp = TANK_TYPES[type].maxHp;
     playRespawnSound(); rebuildTopUi();
+    startTurnTimer(); // הפעלה מחדש
 }
 
 function triggerGameOver(winnerName) {
     gameActive = false;
+    clearInterval(turnTimerInterval);
     document.getElementById('game-over-screen').style.display = 'block';
     document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה! 🏆`;
     
@@ -585,6 +646,7 @@ function draw() {
 }
 
 function endTurnWithMovement() {
+    clearInterval(turnTimerInterval); // איפוס שעון לקראת התור הבא
     socket.emit('fire', { vx: 0, vy: 0, special: 'moved' }); 
 }
 
@@ -612,10 +674,11 @@ function handleGameControls() {
             if (playerMovesLeft <= 0) { updateStatusText(); setTimeout(() => { endTurnWithMovement(); }, 600); return; }
         }
     } else {
-        if (activeKeys['ArrowUp']) { myAngle = Math.min(180, myAngle + 1); changed = true; }
-        if (activeKeys['ArrowDown']) { myAngle = Math.max(0, myAngle - 1); changed = true; }
-        if (activeKeys['ArrowRight']) { myPower = Math.min(100, myPower + 0.5); changed = true; }
-        if (activeKeys['ArrowLeft']) { myPower = Math.max(1, myPower - 0.5); changed = true; }
+        // במידה והשחקן מתקן זווית או עוצמה - איפוס הטיימר בחזרה ל-10 שניות קשיח!
+        if (activeKeys['ArrowUp']) { myAngle = Math.min(180, myAngle + 1); changed = true; resetTurnTimerOnAim(); }
+        if (activeKeys['ArrowDown']) { myAngle = Math.max(0, myAngle - 1); changed = true; resetTurnTimerOnAim(); }
+        if (activeKeys['ArrowRight']) { myPower = Math.min(100, myPower + 0.5); changed = true; resetTurnTimerOnAim(); }
+        if (activeKeys['ArrowLeft']) { myPower = Math.max(1, myPower - 0.5); changed = true; resetTurnTimerOnAim(); }
     }
 
     if (changed) {
@@ -629,20 +692,10 @@ function handleGameControls() {
         if (activeWeapon.ammo <= 0) return;
         if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
 
+        clearInterval(turnTimerInterval); // עצירת שעון השחקן ברגע הירייה בפועל
         const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
         playLaserSound(); rebuildTopUi();
         socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
-    }
-}
-
-function updateStatusText() {
-    if (!gameActive) return;
-    if (currentTurnId === myId) {
-        statusDiv.innerText = `התור שלך! (עוצמה: ${Math.floor(myPower)} | זווית: ${myAngle}° | נשק: ${playerInventory[selectedWeaponKey].name} | דלק: ${playerMovesLeft}/5)`;
-        statusDiv.style.color = "#ffcc00";
-    } else {
-        const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב";
-        statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333";
     }
 }
 
