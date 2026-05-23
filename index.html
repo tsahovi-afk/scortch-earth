@@ -2,11 +2,12 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - מהדורת 6 שחקנים עם טיימר אטום ל-AI</title>
+    <title>טנקים נגד טנקים - מהדורת 6 שחקנים עם כפתורי מגע לנייד</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
+        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none; }
         #game-container { position: relative; display: none; }
-        canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; }
+        canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; max-width: 100vw; height: auto; }
         
         .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 20px; pointer-events: none; font-family: monospace; }
         .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 5px 10px; border-radius: 4px; min-width: 110px; text-align: center; box-shadow: 0 0 10px rgba(255, 204, 0, 0.1); }
@@ -16,10 +17,10 @@
 
         #turn-timer-display { background: #000; border: 3px double #ffcc00; color: #ffcc00; font-size: 24px; font-weight: bold; padding: 5px 15px; border-radius: 4px; min-width: 50px; text-align: center; text-shadow: 0 0 8px #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.3); }
 
-        #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; }
+        #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; text-align: center; }
         #controls-info { margin-top: 5px; font-size: 13px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
         
-        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
+        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; max-width: 90vw; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); box-sizing: border-box; }
         h2 { margin-top: 0; color: #ffcc00; font-size: 22px; }
         label { display: block; text-align: right; margin: 8px 0 4px 0; font-weight: bold; font-size: 14px; }
         input, select { width: 100%; padding: 8px; box-sizing: border-box; background: #333; color: #fff; border: 1px solid #ffcc00; border-radius: 4px; font-size: 14px; }
@@ -28,7 +29,6 @@
         button:hover { background-color: #ffee55; transform: scale(1.03); }
         button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px #997a00; }
         
-        /* תיקון יציב ואטום לקוביות בחירת הצבעים */
         .color-picker-grid { display: flex; justify-content: space-between; gap: 6px; margin: 10px 0 15px 0; background: #111; padding: 8px; border-radius: 6px; border: 1px solid #444; }
         .color-dot { display: block; width: 45px; height: 35px; border: 2px solid #444; cursor: pointer; border-radius: 4px; transition: 0.1s; }
         .color-dot:hover { transform: scale(1.08); border-color: #aaa; }
@@ -39,7 +39,6 @@
         .share-row { display: flex; width: 100%; gap: 5px; }
         .share-link-input { font-family: monospace; background: #111; color: #ffcc00; border: 1px solid #444; padding: 6px; font-size: 12px; border-radius: 4px; text-align: center; pointer-events: none; width: 70%; }
         .btn-copy { background: #333; color: #ffcc00; border: 1px solid #ffcc00; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 30%; box-shadow: none; margin: 0; }
-        .btn-copy:hover { background: #444; color: #fff; }
 
         #respawn-select-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5; align-items: center; justify-content: center; }
         .tank-option { background: #333; border: 1px solid #555; padding: 10px; margin: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
@@ -50,6 +49,18 @@
         .stats-table { width: 100%; margin: 15px 0; border-collapse: collapse; text-align: right; font-size: 13px; }
         .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 6px; }
         .stats-table td { padding: 6px; border-bottom: 1px solid #444; }
+
+        /* 📱 פאנל כפתורי מגע וירטואליים לסלולרי */
+        #mobile-controls { display: none; width: 100%; max-width: 800px; justify-content: space-between; padding: 10px 20px; box-sizing: border-box; background: #151515; border-top: 2px solid #ffcc00; margin-top: auto; }
+        .touch-group { display: grid; gap: 8px; }
+        .left-dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 45px); }
+        .right-buttons { grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(2, 45px); justify-items: center; align-items: center; }
+        
+        .touch-btn { background: #222; color: #ffcc00; border: 2px solid #ffcc00; font-size: 16px; font-weight: bold; border-radius: 6px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; cursor: pointer; touch-action: manipulation; }
+        .touch-btn:active { background: #ffcc00; color: #000; }
+        .btn-fire-mobile { background: #cc2222; color: #fff; border-color: #ff3333; grid-column: span 2; grid-row: span 2; font-size: 18px; text-shadow: 1px 1px #000; height: 100%; }
+        .btn-fire-mobile:active { background: #ff3333; color: #fff; }
+        .btn-active-toggle { background: #9400d3; color: #fff; border-color: #ba55d3; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -63,12 +74,12 @@
         
         <label>בחר צבע מותג:</label>
         <div class="color-picker-grid">
-            <div class="color-dot selected" style="background-color:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div> <!-- צהוב -->
-            <div class="color-dot" style="background-color:#ff3333" onclick="pickColor(this, '#ff3333')"></div> <!-- אדום -->
-            <div class="color-dot" style="background-color:#00ff00" onclick="pickColor(this, '#00ff00')"></div> <!-- ירוק -->
-            <div class="color-dot" style="background-color:#33ccff" onclick="pickColor(this, '#33ccff')"></div> <!-- כחול -->
-            <div class="color-dot" style="background-color:#ffffff" onclick="pickColor(this, '#ffffff')"></div> <!-- לבן -->
-            <div class="color-dot" style="background-color:#222222; border: 2px dashed #ffcc00" onclick="pickColor(this, '#222222')"></div> <!-- שחור -->
+            <div class="color-dot selected" style="background-color:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div>
+            <div class="color-dot" style="background-color:#ff3333" onclick="pickColor(this, '#ff3333')"></div>
+            <div class="color-dot" style="background-color:#00ff00" onclick="pickColor(this, '#00ff00')"></div>
+            <div class="color-dot" style="background-color:#33ccff" onclick="pickColor(this, '#33ccff')"></div>
+            <div class="color-dot" style="background-color:#ffffff" onclick="pickColor(this, '#ffffff')"></div>
+            <div class="color-dot" style="background-color:#222222; border: 2px dashed #ffcc00" onclick="pickColor(this, '#222222')"></div>
         </div>
 
         <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
@@ -167,10 +178,29 @@
         <button onclick="location.reload()">🔄 משחק חדש</button>
     </div>
 
+    <!-- 📱 פאנל כפתורי מגע וירטואליים לסלולרי (מוסתר כברירת מחדל) -->
+    <div id="mobile-controls">
+        <!-- ג'ויסטיק כיוון ותנועה (צד שמאל) -->
+        <div class="touch-group left-dpad">
+            <div></div><div class="touch-btn" id="m-up">▲</div><div></div>
+            <div class="touch-btn" id="m-left">◀</div><div class="touch-btn" id="m-shift" style="font-size:12px;">SHIFT</div><div class="touch-btn" id="m-right">▶</div>
+            <div></div><div class="touch-btn" id="m-down">▼</div><div></div>
+        </div>
+        
+        <!-- כפתורי החלפת נשק וירי (צד ימין) -->
+        <div class="touch-group right-buttons">
+            <div class="touch-btn" id="m-w1">1</div>
+            <div class="touch-btn" id="m-w2">2</div>
+            <div class="touch-btn" id="m-w3">3</div>
+            <div></div>
+            <div class="touch-btn btn-fire-mobile" id="m-fire">FIRE</div>
+        </div>
+    </div>
+
     <div id="status">טוען...</div>
     <div id="controls-info">
         <strong>קנה וכוח:</strong> חצים למעלה/למטה (זווית), חצים ימינה/שמאלה (עוצמה) | <strong>🔥 אש:</strong> רווח<br>
-        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3)<br>
+        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3) | מקש [3] פצצת שמן נוזלי (3)<br>
         <strong>🚙 תנועה טקטית:</strong> Shift + חץ ימינה/שמאלה (עד 5 צעדים בתור, זזת - התור עובר!)
     </div>
 
@@ -189,6 +219,7 @@ let gamePlayers = {};
 let turnOrder = [];
 let projectile = null;
 let clusterProjectiles = []; 
+let oilDrops = [];
 const gravity = 0.15;
 
 let aiLastSpecs = {};
@@ -202,7 +233,8 @@ let turnTimerInterval = null;
 
 let playerInventory = {
     1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
-    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" }
+    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
+    3: { name: "שמן נוזלי", ammo: 3, type: "oil" }
 };
 let selectedWeaponKey = 1;
 
@@ -468,6 +500,7 @@ function checkAndRunAiTurn() {
         aiLastSpecs[currentTurnId] = spec;
         let aiWeaponType = "normal";
         if (Math.random() < 0.25) aiWeaponType = "cluster";
+        else if (Math.random() < 0.15) aiWeaponType = "oil";
 
         const fireRad = (spec.angle * Math.PI) / 180;
         const speed = spec.power * 0.12;
@@ -480,14 +513,11 @@ function checkAndRunAiTurn() {
 function drawSkyAndCelestialBodies() {
     let stage = Math.floor(totalShotsFiredInGame / 2) % 4;
     let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    
     if (stage === 0) { skyGradient.addColorStop(0, '#2c3e50'); skyGradient.addColorStop(1, '#0c2461'); } 
     else if (stage === 1) { skyGradient.addColorStop(0, '#3498db'); skyGradient.addColorStop(1, '#87ceeb'); } 
     else if (stage === 2) { skyGradient.addColorStop(0, '#6f1573'); skyGradient.addColorStop(1, '#2c3e50'); } 
     else { skyGradient.addColorStop(0, '#0f172a'); skyGradient.addColorStop(1, '#020617'); }
-    
     ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     if (stage <= 1) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
         for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(100 + i*200, 80, 20, 0, Math.PI*2); ctx.arc(120 + i*200, 75, 25, 0, Math.PI*2); ctx.arc(140 + i*200, 80, 18, 0, Math.PI*2); ctx.fill(); }
@@ -565,12 +595,21 @@ function draw() {
 
     if (projectile) {
         projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
-        ctx.beginPath(); ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2); ctx.fillStyle = '#ff3333'; ctx.fill();
+        ctx.beginPath();
+        if(projectile.wType === 'oil') ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
+        else ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
 
-        if (!projectile.hasSplit && projectile.vy > 0.2 && projectile.wType === 'cluster') {
-            projectile.hasSplit = true;
-            for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
-            projectile = null; 
+        if (!projectile.hasSplit && projectile.vy > 0.2) {
+            if (projectile.wType === 'cluster') {
+                projectile.hasSplit = true;
+                for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
+                projectile = null; 
+            } else if (projectile.wType === 'oil') {
+                projectile.hasSplit = true;
+                for (let i = 0; i < 6; i++) oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner, life: 150 });
+                projectile = null;
+            }
         }
 
         if (projectile) {
@@ -594,9 +633,33 @@ function draw() {
             const craterX = Math.floor(cp.x); playExplosionSound();
             for (let x = craterX - 12; x <= craterX + 12; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 12*12 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
             checkExplosionDamage(craterX, 22, 18); let ownerId = cp.owner; clusterProjectiles.splice(i, 1);
-            if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
-        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { let ownerId = cp.owner; clusterProjectiles.splice(i, 1); if (clusterProjectiles.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn'); }
+            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { let ownerId = cp.owner; clusterProjectiles.splice(i, 1); if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn'); }
     }
+
+    for (let i = oilDrops.length - 1; i >= 0; i--) {
+        let od = oilDrops[i]; od.life--; od.vy += gravity; od.x += od.vx; od.y += od.vy;
+        if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
+            od.y = terrain[Math.floor(od.x)];
+            let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)]; let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
+            if (leftSlope > rightSlope) od.vx = 1.5; else if (rightSlope > leftSlope) od.vx = -1.5; else od.vx = (Math.random() - 0.5) * 1.5;
+            od.x += od.vx; od.vy = 0;
+            for (let id in gamePlayers) {
+                const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
+                if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
+                    p.hp = Math.max(0, p.hp - 4); rebuildTopUi();
+                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(p.lives > 0) { if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; } else { let alive = turnOrder.filter(pid => gamePlayers[pid].lives > 0); if(alive.length <= 1) triggerGameOver(alive.length === 1 ? gamePlayers[alive[0]].name : "אף אחד"); } }
+                    od.life = 0; break;
+                }
+            }
+        }
+        ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
+        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height || od.life <= 0) {
+            let ownerId = od.owner; oilDrops.splice(i, 1);
+            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+        }
+    }
+
     requestAnimationFrame(draw);
 }
 
@@ -605,12 +668,15 @@ function endTurnWithMovement() { clearInterval(turnTimerInterval); socket.emit('
 let activeKeys = {};
 window.addEventListener('keydown', (e) => { 
     activeKeys[e.key] = true; 
-    if (e.key === '1' || e.key === '2') { const keyNum = parseInt(e.key); if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } }
+    if (e.key === '1' || e.key === '2' || e.key === '3') { 
+        const keyNum = parseInt(e.key); 
+        if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } 
+    }
 });
 window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
 
 function handleGameControls() {
-    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0) return;
+    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
     const me = gamePlayers[myId]; if(!me || me.hp <= 0) return;
     let changed = false;
 
@@ -632,11 +698,21 @@ function handleGameControls() {
     if (changed) { updateStatusText(); if (!activeKeys['Shift']) socket.emit('updateAim', { angle: myAngle, power: myPower }); }
 
     if (activeKeys[' ']) {
-        activeKeys[' '] = false; const activeWeapon = playerInventory[selectedWeaponKey]; if (activeWeapon.ammo <= 0) return;
-        if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
-        clearInterval(turnTimerInterval); const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
-        playLaserSound(); rebuildTopUi(); socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
+        activeKeys[' '] = false; executeWeaponFire();
     }
+}
+
+function executeWeaponFire() {
+    if (!gameActive || currentTurnId !== myId || projectile) return;
+    const activeWeapon = playerInventory[selectedWeaponKey];
+    if (activeWeapon.ammo <= 0) return;
+    if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
+
+    clearInterval(turnTimerInterval); 
+    const me = gamePlayers[myId]; const tSpecs = TANK_TYPES[me.type];
+    const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
+    playLaserSound(); rebuildTopUi();
+    socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
 }
 
 function updateStatusText() {
@@ -645,8 +721,72 @@ function updateStatusText() {
     else { const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב"; statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333"; }
 }
 
-function showGameLayout() { document.getElementById('login-panel').style.display = 'none'; document.getElementById('lobby-panel').style.display = 'none'; document.getElementById('game-over-screen').style.display = 'none'; document.getElementById('game-container').style.display = 'block'; statusDiv.style.display = 'block'; document.getElementById('controls-info').style.display = 'block'; }
-window.onload = function() { initializeShareLink(); };
+function showGameLayout() { 
+    document.getElementById('login-panel').style.display = 'none'; 
+    document.getElementById('lobby-panel').style.display = 'none'; 
+    document.getElementById('game-over-screen').style.display = 'none'; 
+    document.getElementById('game-container').style.display = 'block'; 
+    statusDiv.style.display = 'block'; 
+    document.getElementById('controls-info').style.display = 'block'; 
+    
+    // זיהוי והדלקת פאנל כפתורי מגע אם מדובר במכשיר סלולרי
+    if (window.innerHeight < 600 || window.innerWidth < 800 || /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+        document.getElementById('mobile-controls').style.display = 'flex';
+        document.getElementById('controls-info').style.display = 'none'; // העלמת כיתוב מקלדת
+    }
+}
+
+// 📱 מערכת האזנה ולוגיקה לכפתורי המגע בסלולרי
+function setupMobileControls() {
+    const triggerKey = (key, state) => { activeKeys[key] = state; };
+    const setupBtn = (id, actionDown, actionUp) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); actionDown(); });
+        if (actionUp) btn.addEventListener('touchend', (e) => { e.preventDefault(); actionUp(); });
+    };
+
+    // חצים וזוויות
+    setupBtn('m-up', () => { triggerKey('ArrowUp', true); }, () => { triggerKey('ArrowUp', false); });
+    setupBtn('m-down', () => { triggerKey('ArrowDown', true); }, () => { triggerKey('ArrowDown', false); });
+    
+    // שליטה כפולה - עוצמה או נסיעה (לפי כפתור ה-Shift)
+    setupBtn('m-left', () => {
+        if(activeKeys['Shift']) { triggerKey('ArrowLeft', true); }
+        else { triggerKey('ArrowLeft', true); }
+    }, () => { triggerKey('ArrowLeft', false); });
+
+    setupBtn('m-right', () => {
+        if(activeKeys['Shift']) { triggerKey('ArrowRight', true); }
+        else { triggerKey('ArrowRight', true); }
+    }, () => { triggerKey('ArrowRight', false); });
+
+    // כפתור ה-SHIFT הווירטואלי (מצב לחוץ/משוחרר)
+    const sBtn = document.getElementById('m-shift');
+    if(sBtn) {
+        sBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if(activeKeys['Shift']) {
+                activeKeys['Shift'] = false; sBtn.classList.remove('btn-active-toggle');
+            } else {
+                activeKeys['Shift'] = true; sBtn.classList.add('btn-active-toggle');
+            }
+        });
+    }
+
+    // בחירת סוגי נשק (1, 2, 3)
+    setupBtn('m-w1', () => { selectedWeaponKey = 1; playMoveSound(); rebuildTopUi(); });
+    setupBtn('m-w2', () => { selectedWeaponKey = 2; playMoveSound(); rebuildTopUi(); });
+    setupBtn('m-w3', () => { selectedWeaponKey = 3; playMoveSound(); rebuildTopUi(); });
+
+    // כפתור ירייה
+    setupBtn('m-fire', () => { executeWeaponFire(); });
+}
+
+window.onload = function() { 
+    initializeShareLink(); 
+    setupMobileControls(); 
+};
 setInterval(handleGameControls, 50);
 </script>
 </body>
