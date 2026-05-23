@@ -12,6 +12,7 @@ let players = {};
 let turnOrder = [];
 let currentTurnIndex = 0;
 let gameInProgress = false;
+let serverTurnTimeout = null; // טיימר גיבוי קשיח ברמת השרת
 
 io.on('connection', (socket) => {
     
@@ -37,7 +38,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startConfiguredGame', (data) => {
-        // ניקוי בוטים ישנים מהסבב
         for (let id in players) {
             if (players[id].isAi) delete players[id];
         }
@@ -86,6 +86,8 @@ io.on('connection', (socket) => {
             turnOrder: turnOrder, 
             currentTurnId: turnOrder[currentTurnIndex] 
         });
+
+        startServerTimeout(); // הפעלת שעון השומר הפנימי של השרת
     });
 
     socket.on('updateAim', (data) => {
@@ -114,7 +116,9 @@ io.on('connection', (socket) => {
         }
     });
 
+    // פונקציית העברת תור אטומה
     function nextTurn() {
+        clearTimeout(serverTurnTimeout); // איפוס השומר הישן
         if (turnOrder.length === 0) return;
         
         let attempts = 0;
@@ -132,6 +136,17 @@ io.on('connection', (socket) => {
         }
         
         io.emit('nextTurn', { currentTurnId: turnOrder[currentTurnIndex] });
+        startServerTimeout(); // הפעלת שומר חדש לתור הבא
+    }
+
+    // שומר הסף הקשוח של השרת - אם עברו 13 שניות ושום דבר לא קרה, הוא מעביר תור בכוח
+    function startServerTimeout() {
+        clearTimeout(serverTurnTimeout);
+        serverTurnTimeout = setTimeout(() => {
+            if (!gameInProgress) return;
+            console.log("סעיף הגנה אקטיבי: תור נתקע, השרת מעביר תור באופן יזום!");
+            nextTurn();
+        }, 13000); // 13 שניות (נותן עוד 3 שניות ביטחון מעבר לטיימר של המסך)
     }
 
     socket.on('disconnect', () => {
@@ -140,6 +155,7 @@ io.on('connection', (socket) => {
             turnOrder = turnOrder.filter(id => id !== socket.id);
             if (turnOrder.filter(id => !players[id].isAi).length === 0) {
                 gameInProgress = false;
+                clearTimeout(serverTurnTimeout);
                 players = {};
                 turnOrder = [];
             }
