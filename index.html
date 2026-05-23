@@ -1,156 +1,680 @@
-const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const path = require('path');
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <title>אדמה חרוכה - מהדורת 6 שחקנים ומחזור שמיים דינמי</title>
+    <style>
+        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
+        #game-container { position: relative; display: none; }
+        canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; }
+        
+        /* לוח עליון מרובה שחקנים */
+        .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 20px; pointer-events: none; font-family: monospace; }
+        .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 5px 10px; border-radius: 4px; min-width: 110px; text-align: center; box-shadow: 0 0 10px rgba(255, 204, 0, 0.1); }
+        .ui-panel-box h3 { margin: 0 0 2px 0; font-size: 13px; text-shadow: 1px 1px #000; }
+        .ui-panel-box div { font-size: 11px; margin: 1px 0; }
+        .active-turn-box { border-color: #00ff00 !important; box-shadow: 0 0 15px #00ff00 !important; }
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+        #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; }
+        #controls-info { margin-top: 5px; font-size: 13px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
+        
+        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
+        h2 { margin-top: 0; color: #ffcc00; font-size: 22px; }
+        label { display: block; text-align: right; margin: 8px 0 4px 0; font-weight: bold; font-size: 14px; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; background: #333; color: #fff; border: 1px solid #ffcc00; border-radius: 4px; font-size: 14px; }
+        
+        button { background-color: #ffcc00; color: #000; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; margin: 12px 4px 0 4px; cursor: pointer; border-radius: 5px; transition: 0.2s; box-shadow: 3px 3px 0px #997a00; }
+        button:hover { background-color: #ffee55; transform: scale(1.03); }
+        button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px #997a00; }
+        
+        .color-picker-grid { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
+        .color-dot { width: 40px; height: 30px; border: 2px solid #555; cursor: pointer; border-radius: 4px; }
+        .color-dot.selected { border-color: #fff; box-shadow: 0 0 8px #fff; }
 
-let players = {};
+        #respawn-select-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5; align-items: center; justify-content: center; }
+        .tank-option { background: #333; border: 1px solid #555; padding: 10px; margin: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
+        .tank-option:hover { border-color: #ffcc00; background: #3c3c3c; }
+
+        #game-over-screen { display: none; position: absolute; z-index: 10; background-color: rgba(10, 10, 15, 0.95); border: 4px double #ffcc00; padding: 30px; text-align: center; min-width: 350px; box-shadow: 0 0 30px #ff3333; }
+        .game-over-title { font-size: 30px; font-weight: bold; color: #ff3333; margin-bottom: 15px; }
+        .stats-table { width: 100%; margin: 15px 0; border-collapse: collapse; text-align: right; font-size: 13px; }
+        .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 6px; }
+        .stats-table td { padding: 6px; border-bottom: 1px solid #444; }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <!-- שלב 1: מסך רישום והתחברות לשחקן -->
+    <div id="login-panel" class="panel">
+        <h2>📝 רישום שחקן זירה</h2>
+        <label>כינוי קרב:</value>
+        <input type="text" id="player-name-input" value="צהובי">
+        
+        <label>בחר צבע מותג:</label>
+        <div class="color-picker-grid">
+            <div class="color-dot selected" style="background:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div> <!-- צהוב -->
+            <div class="color-dot" style="background:#ff3333" onclick="pickColor(this, '#ff3333')"></div> <!-- אדום -->
+            <div class="color-dot" style="background:#00ff00" onclick="pickColor(this, '#00ff00')"></div> <!-- ירוק -->
+            <div class="color-dot" style="background:#33ccff" onclick="pickColor(this, '#33ccff')"></div> <!-- כחול -->
+            <div class="color-dot" style="background:#ffffff" onclick="pickColor(this, '#ffffff')"></div> <!-- לבן -->
+            <div class="color-dot" style="background:#111111; border:2px dashed #ffcc00" onclick="pickColor(this, '#111111')"></div> <!-- שחור -->
+        </div>
+
+        <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
+    </div>
+
+    <!-- שלב 2: מסך קביעת כמות שחקנים ובוטים (רק למנהל החדר הראשון) -->
+    <div id="lobby-panel" class="panel" style="display:none;">
+        <h2>⚙️ הגדרות זירת קרב (עד 6 שחקנים)</h2>
+        <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
+        
+        <label>סה"כ שחקנים בזירה (שחקנים + מחשב):</label>
+        <select id="total-players-select">
+            <option value="2" selected>2 משתתפים</option>
+            <option value="3">3 משתתפים</option>
+            <option value="4">4 משתתפים</option>
+            <option value="5">5 משתתפים</option>
+            <option value="6">6 משתתפים</option>
+        </select>
+
+        <label>מתוכם - כמה יהיו בוטים של מחשב (AI)?</label>
+        <select id="ai-players-select">
+            <option value="0">0 בוטים (רק שחקני אונליין)</option>
+            <option value="1" selected>1 בוט מחשב</option>
+            <option value="2">2 בוטים של מחשב</option>
+            <option value="3">3 בוטים של מחשב</option>
+            <option value="4">4 בוטים של מחשב</option>
+            <option value="5">5 בוטים של מחשב</option>
+        </select>
+
+        <label>בחר דגם טנק פתיחה:</label>
+        <select id="start-tank-type">
+            <option value="medium">🚀 טנק צייד (Medium - 100 HP)</option>
+            <option value="heavy">🐘 טנק ממותה (Heavy - 150 HP)</option>
+            <option value="light">⚡ טנק זיקית (Light - 75 HP)</option>
+        </select>
+
+        <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
+    </div>
+
+    <!-- זירת המשחק המרכזית -->
+    <div id="game-container">
+        <!-- חלון בחירת טנק בזמן מוות (Respawn) -->
+        <div id="respawn-select-overlay">
+            <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
+                <h3 style="color: #ff3333; margin-top: 0; font-size:18px;">💥 הטנק שלך נהרס! 💥</h3>
+                <p style="font-size:14px;">בחר דגם חדש כדי לחזור מיד במקום שלך לזירה:</p>
+                <div class="tank-option" onclick="executeRespawn('medium')"><strong>🚀 טנק צייד</strong> (100 HP)</div>
+                <div class="tank-option" onclick="executeRespawn('heavy')"><strong>🐘 טנק ממותה</strong> (150 HP)</div>
+                <div class="tank-option" onclick="executeRespawn('light')"><strong>⚡ טנק זיקית</strong> (75 HP)</div>
+            </div>
+        </div>
+
+        <!-- לוח ממשק עליון דינמי מרובה משתתפים -->
+        <div id="dynamic-ui-bar" class="ui-bar"></div>
+
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+    </div>
+
+    <!-- מסך סיכום -->
+    <div id="game-over-screen">
+        <div id="go-title" class="game-over-title">GAME OVER</div>
+        <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
+        
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>סטטיסטיקת המערכה</th>
+                    <th style="color: #ffcc00;">אתה</th>
+                    <th style="color: #ff3333;">המחשב/אחר</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>פגזים שנורו בזירה</td>
+                    <td id="stat-shots-player">0</td>
+                    <td id="stat-shots-ai">0</td>
+                </tr>
+                <tr>
+                    <td>פגיעות מוצלחות</td>
+                    <td id="stat-hits-player">0</td>
+                    <td id="stat-hits-ai">0</td>
+                </tr>
+                <tr>
+                    <td>צעדי תמרון ודלק</td>
+                    <td id="stat-moves-player">0</td>
+                    <td id="stat-moves-ai">0</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button onclick="location.reload()">🔄 משחק חדש</button>
+    </div>
+
+    <div id="status">טוען...</div>
+    <div id="controls-info">
+        <strong>קנה וכוח:</strong> חצים למעלה/למטה (זווית), חצים ימינה/שמאלה (עוצמה) | <strong>🔥 אש:</strong> רווח<br>
+        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3) | מקש [3] פצצת שמן נוזלי (3)<br>
+        <strong>🚙 תנועה טקטית:</strong> Shift + חץ ימינה/שמאלה (עד 5 צעדים בתור, זזת - התור עובר!)
+    </div>
+
+<script>
+let socket;
+let isAiMode = true; 
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const statusDiv = document.getElementById('status');
+
+let myId = '';
+let gameActive = false;
+let currentTurnId = null;
+let gamePlayers = {};
 let turnOrder = [];
-let currentTurnIndex = 0;
-let gameInProgress = false;
-let maxPlayersConfig = 2;
+let projectile = null;
+let clusterProjectiles = []; 
+let oilDrops = []; 
+const gravity = 0.15;
 
-io.on('connection', (socket) => {
+let aiLastSpecs = {};
+let aiLastXLand = null;
+let playerMovesLeft = 5;
+
+// מערכת מחזור יום ולילה דינמית (לפי תורות)
+let totalShotsFiredInGame = 0;
+
+let chosenColor = '#ffcc00';
+let playerInventory = {
+    1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
+    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
+    3: { name: "שמן נוזלי", ammo: 3, type: "oil" }
+};
+let selectedWeaponKey = 1;
+
+let stats = { player: { shots: 0, hits: 0, moves: 0 }, globalOther: { shots: 0, hits: 0, moves: 0 } };
+
+const TANK_TYPES = {
+    medium: { width: 24, height: 12, maxHp: 100 },
+    heavy: { width: 34, height: 16, maxHp: 150 },
+    light: { width: 16, height: 8, maxHp: 75 }
+};
+
+const terrain = [];
+let myAngle = 45;
+let myPower = 50;
+let audioCtx = null;
+
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+function playLaserSound() {
+    initAudio(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+}
+
+function playExplosionSound() {
+    initAudio(); const bufferSize = audioCtx.sampleRate * 0.3; const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(180, audioCtx.currentTime); filter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
+    const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.22, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start();
+}
+
+function playMoveSound() {
+    initAudio(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.04, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+}
+
+function playRespawnSound() {
+    initAudio(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.4);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+}
+
+function pickColor(element, color) {
+    document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+    element.classList.add('selected');
+    chosenColor = color;
+}
+
+function connectToLobby() {
+    initAudio();
+    const pName = document.getElementById('player-name-input').value || 'צהובי';
     
-    socket.on('joinLobby', (data) => {
-        if (gameInProgress) {
-            socket.emit('lobbyStatus', { error: 'המשחק כבר בעיצומו!' });
-            return;
-        }
-        
-        // שמירת נתוני השחקן שהתחבר מהרשת
-        players[socket.id] = {
-            id: socket.id,
-            name: data.name || 'שחקן רשת',
-            color: data.color || '#ffcc00',
-            type: data.type || 'medium',
-            isAi: false,
-            x: 0,
-            hp: 100,
-            maxHp: 100,
-            lives: 3
-        };
-        
-        io.emit('lobbyUpdate', { players: Object.values(players) });
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('lobby-panel').style.display = 'block';
+    
+    socket = io();
+
+    socket.on('connect', () => {
+        myId = socket.id;
+        socket.emit('joinLobby', { name: pName, color: chosenColor });
     });
 
-    socket.on('startConfiguredGame', (data) => {
-        if (gameInProgress) return;
-        
-        maxPlayersConfig = parseInt(data.totalPlayers) || 2;
-        const aiCount = parseInt(data.aiCount) || 0;
-        
-        // הגרלת מיקומים על פני המסך (במרווחים שווים)
-        let totalSlots = Object.keys(players).length + aiCount;
-        let step = 700 / (totalSlots + 1);
-        let currentSlot = 1;
-        
-        // מיקום שחקני אנושיים
-        turnOrder = [];
-        for (let id in players) {
-            players[id].x = Math.floor(50 + currentSlot * step);
-            turnOrder.push(id);
-            currentSlot++;
-        }
-        
-        // הוספת בוטים של מחשב (AI) ללובי ולסבב התורות
-        const aiNames = ['המחסל', 'צייד הבז', 'אלפא-בוט', 'ברזל כבד', 'זיקית רובוטית'];
-        const aiColors = ['#ff3333', '#00ff00', '#33ccff', '#ffffff', '#ff00ff'];
-        const aiTypes = ['medium', 'heavy', 'light'];
-        
-        for (let i = 0; i < aiCount; i++) {
-            let aiId = 'ai_' + Math.random().toString(36).substr(2, 5);
-            players[aiId] = {
-                id: aiId,
-                name: aiNames[i] || `מחשב ${i+1}`,
-                color: aiColors[i] || '#ff3333',
-                type: aiTypes[Math.floor(Math.random() * aiTypes.length)],
-                isAi: true,
-                x: Math.floor(50 + currentSlot * step),
-                hp: 100,
-                maxHp: 100,
-                lives: 3,
-                inventory: { 1: Infinity, 2: 2, 3: 1 }
-            };
-            turnOrder.push(aiId);
-            currentSlot++;
-        }
-        
-        gameInProgress = true;
-        currentTurnIndex = 0;
-        
-        io.emit('gameStarted', { 
-            players: players, 
-            turnOrder: turnOrder, 
-            currentTurnId: turnOrder[currentTurnIndex] 
+    socket.on('lobbyUpdate', (data) => {
+        let listHtml = "<strong>שחקנים ברשת המחוברים בחדר:</strong><br>";
+        data.players.forEach(p => {
+            listHtml += `<span style="color:${p.color}">■</span> ${p.name} ${p.id === myId ? '(אתה)' : ''}<br>`;
         });
+        document.getElementById('lobby-connected-list').innerHTML = listHtml;
     });
 
-    socket.on('updateAim', (data) => {
-        if (players[socket.id]) {
-            io.emit('playerAimed', { id: socket.id, angle: data.angle, power: data.power });
+    socket.on('gameStarted', (data) => {
+        gamePlayers = data.players;
+        turnOrder = data.turnOrder;
+        currentTurnId = data.currentTurnId;
+        
+        // הגדרת סוגי טנקים ומאפיינים התחלתיים
+        for(let id in gamePlayers) {
+            let pType = gamePlayers[id].type || 'medium';
+            gamePlayers[id].maxHp = TANK_TYPES[pType].maxHp;
+            gamePlayers[id].hp = TANK_TYPES[pType].maxHp;
+            gamePlayers[id].lives = 3;
+            if(!aiLastSpecs[id]) aiLastSpecs[id] = { angle: id === myId ? 45 : 135, power: 55 };
+        }
+
+        // הגרלת שטח ראשוני פעם אחת
+        for (let x = 0; x < canvas.width; x++) {
+            terrain[x] = 380 + Math.sin(x * 0.015) * 45 + Math.cos(x * 0.03) * 15;
+        }
+
+        document.getElementById('lobby-panel').style.display = 'none';
+        showGameLayout();
+        gameActive = true;
+        rebuildTopUi();
+        updateStatusText();
+    });
+
+    socket.on('playerAimed', (data) => {
+        if (gamePlayers[data.id]) {
+            gamePlayers[data.id].angle = data.angle;
+            gamePlayers[data.id].power = data.power;
         }
     });
 
-    socket.on('fire', (data) => {
-        if (turnOrder[currentTurnIndex] === socket.id) {
-            if (!data.special) {
-                io.emit('playerFired', { id: socket.id, vx: data.vx, vy: data.vy, wType: data.wType });
+    socket.on('playerFired', (data) => {
+        const shootingTank = gamePlayers[data.id]; 
+        if (!shootingTank) return;
+        const tSpecs = TANK_TYPES[shootingTank.type];
+        playLaserSound();
+        
+        if(data.id === myId) stats.player.shots++; else stats.globalOther.shots++;
+        totalShotsFiredInGame++; // גורם להזזת השמש והשמיים
+        
+        projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id, wType: data.wType || "normal", hasSplit: false };
+    });
+
+    socket.on('playerMoved', (data) => {
+        if (gamePlayers[data.id]) {
+            gamePlayers[data.id].x = data.x;
+            if(data.id !== myId) stats.globalOther.moves++;
+        }
+    });
+
+    socket.on('nextTurn', (data) => {
+        currentTurnId = data.currentTurnId;
+        playerMovesLeft = 5;
+        rebuildTopUi();
+        setTimeout(() => { updateStatusText(); checkAndRunAiTurn(); }, 1200);
+    });
+}
+
+function startGameEngine() {
+    const totalPlayers = document.getElementById('total-players-select').value;
+    const aiCount = document.getElementById('ai-players-select').value;
+    const startTank = document.getElementById('start-tank-type').value;
+    
+    socket.emit('startConfiguredGame', {
+        totalPlayers: totalPlayers,
+        aiCount: aiCount,
+        type: startTank
+    });
+}
+
+function rebuildTopUi() {
+    const uiBar = document.getElementById('dynamic-ui-bar');
+    uiBar.innerHTML = '';
+    
+    turnOrder.forEach(id => {
+        const p = gamePlayers[id];
+        if (!p) return;
+        
+        const box = document.createElement('div');
+        box.className = 'ui-panel-box';
+        if (id === currentTurnId) box.classList.add('active-turn-box');
+        box.style.borderColor = p.color;
+        
+        box.innerHTML = `
+            <h3 style="color:${p.color}">${p.name}</h3>
+            <div>HP: ${p.hp}/${p.maxHp}</div>
+            <div>טנקים: ${"🔴".repeat(Math.max(0, p.lives))}</div>
+        `;
+        uiBar.appendChild(box);
+    });
+}
+
+function checkAndRunAiTurn() {
+    if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
+    
+    statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
+    statusDiv.style.color = "#ff3333";
+
+    setTimeout(() => {
+        if (currentTurnId === myId || !gameActive) return;
+        
+        const ai = gamePlayers[currentTurnId];
+        const aiSpecs = TANK_TYPES[ai.type];
+        
+        // חיפוש אויב חי אקראי לירות עליו
+        let targets = turnOrder.filter(id => id !== currentTurnId && gamePlayers[id] && gamePlayers[id].hp > 0);
+        if(targets.length === 0) return;
+        let targetPlayer = gamePlayers[targets[Math.floor(Math.random() * targets.length)]];
+        
+        let spec = aiLastSpecs[currentTurnId] || { angle: ai.x > targetPlayer.x ? 135 : 45, power: 55 };
+        
+        // תיקון כוונות פשוט
+        if (ai.x > targetPlayer.x) spec.angle = 120 + Math.random() * 30;
+        else spec.angle = 30 + Math.random() * 30;
+        
+        spec.power = 40 + (Math.abs(ai.x - targetPlayer.x) * 0.05) + (Math.random() - 0.5) * 8;
+        spec.power = Math.max(25, Math.min(95, spec.power));
+        
+        aiLastSpecs[currentTurnId] = spec;
+        
+        let aiWeaponType = "normal";
+        if (Math.random() < 0.25) aiWeaponType = "cluster";
+        else if (Math.random() < 0.15) aiWeaponType = "oil";
+
+        const fireRad = (spec.angle * Math.PI) / 180;
+        const speed = spec.power * 0.12;
+        
+        socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
+    }, 1500);
+}
+
+// מנוע רינדור השמיים הדינמיים (מחזור יום ולילה לפי כמות יריות)
+function drawSkyAndCelestialBodies() {
+    // קביעת צבע הרקע לפי כמות היריות שבוצעו במשחק (כל 2 יריות שלב משתנה)
+    let stage = Math.floor(totalShotsFiredInGame / 2) % 4;
+    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    
+    if (stage === 0) { // תחילת הבוקר - תכלת סגלגל רך
+        skyGradient.addColorStop(0, '#2c3e50');
+        skyGradient.addColorStop(1, '#0c2461');
+    } else if (stage === 1) { // אמצע היום - תכלת בהיר של שמש עולה
+        skyGradient.addColorStop(0, '#3498db');
+        skyGradient.addColorStop(1, '#87ceeb');
+    } else if (stage === 2) { // לקראת ערב - סגלגל כהה דמדומים
+        skyGradient.addColorStop(0, '#6f1573');
+        skyGradient.addColorStop(1, '#2c3e50');
+    } else { // לילה עמוק - כחול כהה/שחור קוסמי
+        skyGradient.addColorStop(0, '#0f172a');
+        skyGradient.addColorStop(1, '#020617');
+    }
+    
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // ציור עננים קטנים ברקע בבוקר ובצהריים
+    if (stage <= 1) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        for (let i = 0; i < 4; i++) {
+            ctx.beginPath(); ctx.arc(100 + i*200, 80, 20, 0, Math.PI*2); ctx.arc(120 + i*200, 75, 25, 0, Math.PI*2); ctx.arc(140 + i*200, 80, 18, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    // ציור שמש או ירח זזים לפי השלבים
+    let progressFactor = (totalShotsFiredInGame % 2) * 0.5; // תנועה חלקה קטנה בתוך השלב
+    let bodyX = canvas.width - ((totalShotsFiredInGame * 40) % (canvas.width + 100));
+    
+    if (stage <= 1) { // ציור שמש קטנה מצד ימין שזזה שמאלה ונעלמת לקראת דמדומים
+        ctx.save();
+        ctx.shadowBlur = 25; ctx.shadowColor = "#ffaa00";
+        ctx.beginPath(); ctx.arc(bodyX, 60, 16, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffcc00"; ctx.fill();
+        ctx.restore();
+    } else { // ציור ירח שעולה מצד ימין וזז שמאלה בלילה וערב
+        ctx.save();
+        ctx.shadowBlur = 15; ctx.shadowColor = "#fff";
+        ctx.beginPath(); ctx.arc(bodyX, 70, 14, 0, Math.PI * 2);
+        ctx.fillStyle = "#e2e8f0"; ctx.fill();
+        ctx.restore();
+    }
+}
+
+function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
+    for (let id in gamePlayers) {
+        const p = gamePlayers[id]; if (p.hp <= 0) continue;
+        const tSpecs = TANK_TYPES[p.type]; const halfWidth = tSpecs.width / 2;
+        let distanceToTank = 0;
+        if (craterX < p.x - halfWidth) distanceToTank = (p.x - halfWidth) - craterX;
+        else if (craterX > p.x + halfWidth) distanceToTank = craterX - (p.x + halfWidth);
+
+        if (distanceToTank < radius) {
+            const damage = Math.floor((1 - (distanceToTank / radius)) * customMaxDamage);
+            if (damage > 0) {
+                p.hp = Math.max(0, p.hp - damage);
+                if (id === myId) stats.globalOther.hits++; else if(p.isAi) stats.player.hits++;
             }
-            nextTurn();
         }
-    });
-
-    socket.on('move', (data) => {
-        if (players[socket.id] && turnOrder[currentTurnIndex] === socket.id) {
-            players[socket.id].x = data.x;
-            io.emit('playerMoved', { id: socket.id, x: data.x });
-        }
-    });
-
-    socket.on('aiFinishedTurn', () => {
-        // העברת תור רשמית לאחר שהבוט סיים לירות או לזוז
-        if (players[turnOrder[currentTurnIndex]] && players[turnOrder[currentTurnIndex]].isAi) {
-            nextTurn();
-        }
-    });
-
-    function nextTurn() {
-        if (turnOrder.length === 0) return;
-        
-        // מעבר לשחקן הבא שעדיין חי
-        let attempts = 0;
-        do {
-            currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
-            attempts++;
-        } while (players[turnOrder[currentTurnIndex]] && players[turnOrder[currentTurnIndex]].hp <= 0 && pHasLives(turnOrder[currentTurnIndex]) === false && attempts < turnOrder.length);
-        
-        io.emit('nextTurn', { currentTurnId: turnOrder[currentTurnIndex] });
     }
 
-    function pHasLives(id) {
-        return players[id] && players[id].lives > 0;
-    }
-
-    socket.on('disconnect', () => {
-        if (players[socket.id]) {
-            delete players[socket.id];
-            turnOrder = turnOrder.filter(id => id !== socket.id);
-            if (turnOrder.length <= 1) {
-                gameInProgress = false;
-                io.emit('playerLeftReset');
+    for (let id in gamePlayers) {
+        const p = gamePlayers[id];
+        if (p.hp <= 0 && p.lives > 0) {
+            p.lives--;
+            rebuildTopUi();
+            if (p.lives > 0) {
+                if (id === myId) {
+                    handlePlayerDeath(); 
+                } else {
+                    p.hp = p.maxHp; playRespawnSound();
+                }
             } else {
-                io.emit('lobbyUpdate', { players: Object.values(players) });
+                // בדיקת סוף משחק - האם נשאר רק שחקן אחד חי בכל המפה?
+                let activePlayers = turnOrder.filter(pid => gamePlayers[pid] && gamePlayers[pid].lives > 0);
+                if (activePlayers.length <= 1) {
+                    let winnerName = activePlayers.length === 1 ? gamePlayers[activePlayers[0]].name : "אף אחד";
+                    triggerGameOver(winnerName);
+                    break;
+                }
             }
         }
-    });
-});
+    }
+}
 
-const PORT = process.env.PORT || 10000;
-http.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+function handlePlayerDeath() {
+    document.getElementById('respawn-select-overlay').style.display = 'flex';
+}
+
+window.executeRespawn = function(type) {
+    document.getElementById('respawn-select-overlay').style.display = 'none';
+    const p = gamePlayers[myId];
+    p.type = type; p.hp = TANK_TYPES[type].maxHp; p.maxHp = TANK_TYPES[type].maxHp;
+    playRespawnSound(); rebuildTopUi();
+}
+
+function triggerGameOver(winnerName) {
+    gameActive = false;
+    document.getElementById('game-over-screen').style.display = 'block';
+    document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה החרוכה! 🏆`;
+    
+    document.getElementById('stat-shots-player').innerText = stats.player.shots;
+    document.getElementById('stat-shots-ai').innerText = stats.globalOther.shots;
+    document.getElementById('stat-hits-player').innerText = stats.player.hits;
+    document.getElementById('stat-hits-ai').innerText = stats.globalOther.hits;
+    document.getElementById('stat-moves-player').innerText = stats.player.moves;
+    document.getElementById('stat-moves-ai').innerText = stats.globalOther.moves;
+}
+
+function draw() {
+    // קריאה למנוע השמיים, העננים, השמש והירח המשודרג
+    drawSkyAndCelestialBodies();
+    
+    // ציור שטח אדמה חום
+    ctx.beginPath(); ctx.moveTo(0, canvas.height);
+    for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x]);
+    ctx.lineTo(canvas.width, canvas.height); ctx.fillStyle = '#3a2512'; ctx.fill();
+
+    // ציור טנקים בזירה
+    for (let id in gamePlayers) {
+        const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const tankY = terrain[Math.floor(p.x)];
+        if (p.hp <= 0 && p.lives <= 0) continue;
+        
+        ctx.save();
+        ctx.fillStyle = '#1e1e1e'; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - 4, tSpecs.width, 4); 
+        ctx.fillStyle = p.color; ctx.fillRect(p.x - (tSpecs.width / 2) + 2, tankY - tSpecs.height, tSpecs.width - 4, tSpecs.height - 3); 
+        
+        ctx.beginPath(); ctx.arc(p.x, tankY - tSpecs.height + 1, tSpecs.width / 4, Math.PI, 0); ctx.fillStyle = '#fff'; ctx.fill(); 
+
+        const angleToUse = id === myId ? myAngle : (p.angle || (p.x > 400 ? 135 : 45));
+        const rad = (angleToUse * Math.PI) / 180;
+        ctx.beginPath(); ctx.moveTo(p.x, tankY - tSpecs.height);
+        ctx.lineTo(p.x + Math.cos(rad) * (tSpecs.width * 0.7), (tankY - tSpecs.height) - Math.sin(rad) * (tSpecs.width * 0.7));
+        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); 
+        ctx.restore();
+
+        if (id === currentTurnId && gameActive && id === myId) {
+            ctx.font = "bold 11px monospace"; ctx.fillStyle = "#ffcc00"; ctx.textAlign = "center";
+            ctx.fillText("POWER: " + Math.floor(myPower), p.x, tankY - tSpecs.height - 10);
+        }
+    }
+
+    // פגז מרכזי
+    if (projectile) {
+        projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
+        ctx.beginPath();
+        if(projectile.wType === 'oil') ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
+        else ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
+
+        if (!projectile.hasSplit && projectile.vy > 0.2) {
+            if (projectile.wType === 'cluster') {
+                projectile.hasSplit = true;
+                for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
+                projectile = null; 
+            } else if (projectile.wType === 'oil') {
+                projectile.hasSplit = true;
+                for (let i = 0; i < 6; i++) oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner, life: 150 });
+                projectile = null;
+            }
+        }
+
+        if (projectile) {
+            if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
+                const craterX = Math.floor(projectile.x);
+                if (projectile.owner === 'ai_player') aiLastXLand = craterX;
+                playExplosionSound();
+                for (let x = craterX - 25; x <= craterX + 25; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 25*25 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
+                checkExplosionDamage(craterX); projectile = null;
+            } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) { projectile = null; }
+        }
+    }
+
+    // פגזי פיצול קטנים
+    for (let i = clusterProjectiles.length - 1; i >= 0; i--) {
+        let cp = clusterProjectiles[i]; cp.vy += gravity; cp.x += cp.vx; cp.y += cp.vy;
+        ctx.beginPath(); ctx.arc(cp.x, cp.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#ff6633'; ctx.fill();
+        if (cp.x >= 0 && cp.x < canvas.width && cp.y >= terrain[Math.floor(cp.x)]) {
+            const craterX = Math.floor(cp.x); playExplosionSound();
+            for (let x = craterX - 12; x <= craterX + 12; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 12*12 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
+            checkExplosionDamage(craterX, 22, 18); clusterProjectiles.splice(i, 1);
+        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { clusterProjectiles.splice(i, 1); }
+    }
+
+    // שמן נוזלי
+    for (let i = oilDrops.length - 1; i >= 0; i--) {
+        let od = oilDrops[i]; od.life--; od.vy += gravity; od.x += od.vx; od.y += od.vy;
+        if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
+            od.y = terrain[Math.floor(od.x)];
+            let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)]; let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
+            if (leftSlope > rightSlope) od.vx = 1.5; else if (rightSlope > leftSlope) od.vx = -1.5; else od.vx = (Math.random() - 0.5) * 1.5;
+            od.x += od.vx; od.vy = 0;
+            for (let id in gamePlayers) {
+                const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
+                if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
+                    p.hp = Math.max(0, p.hp - 4); rebuildTopUi();
+                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(p.lives > 0) { if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; } else { let alive = turnOrder.filter(pid => gamePlayers[pid].lives > 0); if(alive.length <= 1) triggerGameOver(alive.length === 1 ? gamePlayers[alive[0]].name : "אף אחד"); } }
+                    od.life = 0; break;
+                }
+            }
+        }
+        ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
+        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height || od.life <= 0) oilDrops.splice(i, 1);
+    }
+
+    requestAnimationFrame(draw);
+}
+
+let activeKeys = {};
+window.addEventListener('keydown', (e) => { 
+    activeKeys[e.key] = true; 
+    if (e.key === '1' || e.key === '2' || e.key === '3') {
+        const keyNum = parseInt(e.key);
+        if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); updateTopUi(); }
+    }
 });
+window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
+
+function handleGameControls() {
+    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
+    const me = gamePlayers[myId]; if(!me || me.hp <= 0) return;
+    let changed = false;
+
+    if (activeKeys['Shift']) {
+        if (playerMovesLeft > 0) {
+            let nextX = me.x;
+            if (activeKeys['ArrowLeft'] || activeKeys['a']) { nextX = me.x - 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowLeft'] = false; activeKeys['a'] = false; changed = true; }
+            if (activeKeys['ArrowRight'] || activeKeys['d']) { nextX = me.x + 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowRight'] = false; activeKeys['d'] = false; changed = true; }
+            if (nextX > 30 && nextX < canvas.width - 30) { me.x = nextX; playMoveSound(); socket.emit('move', { x: me.x }); }
+            if (playerMovesLeft <= 0) { updateStatusText(); setTimeout(() => { endTurnWithMovement(); }, 600); return; }
+        }
+    } else {
+        if (activeKeys['ArrowUp']) { myAngle = Math.min(180, myAngle + 1); changed = true; }
+        if (activeKeys['ArrowDown']) { myAngle = Math.max(0, myAngle - 1); changed = true; }
+        if (activeKeys['ArrowRight']) { myPower = Math.min(100, myPower + 0.5); changed = true; }
+        if (activeKeys['ArrowLeft']) { myPower = Math.max(1, myPower - 0.5); changed = true; }
+    }
+
+    if (changed) {
+        updateStatusText();
+        if (!activeKeys['Shift']) socket.emit('updateAim', { angle: myAngle, power: myPower });
+    }
+
+    if (activeKeys[' ']) {
+        activeKeys[' '] = false;
+        const activeWeapon = playerInventory[selectedWeaponKey];
+        if (activeWeapon.ammo <= 0) return;
+        if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
+
+        const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
+        playLaserSound(); rebuildTopUi();
+        socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
+    }
+}
+
+function updateStatusText() {
+    if (!gameActive) return;
+    if (currentTurnId === myId) {
+        statusDiv.innerText = `התור שלך! (עוצמה: ${Math.floor(myPower)} | זווית: ${myAngle}° | נשק: ${playerInventory[selectedWeaponKey].name} | דלק: ${playerMovesLeft}/5)`;
+        statusDiv.style.color = "#ffcc00";
+    } else {
+        const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב";
+        statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333";
+    }
+}
+
+setInterval(handleGameControls, 50);
+</script>
+</body>
+</html>
