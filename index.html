@@ -156,19 +156,19 @@
                     <td>פגזים שנורו בזירה</td>
                     <td id="stat-shots-player">0</td>
                     <td id="stat-shots-ai">0</td>
-                </tr>
+              </tr>
                 <tr>
                     <td>פגיעות מוצלחות</td>
                     <td id="stat-hits-player">0</td>
                     <td id="stat-hits-ai">0</td>
-                </tr>
+              </tr>
                 <tr>
                     <td>צעדי תמרון ודלק</td>
                     <td id="stat-moves-player">0</td>
                     <td id="stat-moves-ai">0</td>
-                </tr>
+              </tr>
             </tbody>
-        </table>
+      </table>
 
         <button onclick="location.reload()">🔄 משחק חדש</button>
     </div>
@@ -376,6 +376,8 @@ function connectToLobby() {
         totalShotsFiredInGame++; 
         
         projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id, wType: data.wType || "normal", hasSplit: false };
+        
+        // אם זה בוט, הוא לא צריך לעשות כלום עד שהפגז ינחת
     });
 
     socket.on('playerMoved', (data) => {
@@ -475,7 +477,7 @@ function checkAndRunAiTurn() {
 
     // שלב 1: ניתוח מפה (5 שניות)
     setTimeout(() => {
-        if (!gameActive || currentTurnId === myId || !gamePlayers[currentTurnId]?.isAi) return;
+        if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
         
         const ai = gamePlayers[currentTurnId];
         
@@ -490,10 +492,10 @@ function checkAndRunAiTurn() {
         let targetPlayer = gamePlayers[myId] || Object.values(gamePlayers).find(p => !p.isAi && p.hp > 0);
         
         // שלב 2: כיוון וירי (5 שניות)
-        statusDiv.innerText = `המחשב (${ai.name}) מכוון...`;
+        statusDiv.innerText = `המחשב (${ai.name}) מכוון ויורה...`;
         
         setTimeout(() => {
-            if (!gameActive || currentTurnId === myId || !gamePlayers[currentTurnId]?.isAi) return;
+            if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
 
             let targetAngle = ai.x > (targetPlayer?.x || 400) ? 135 : 45;
             let targetPower = 40 + (Math.random() * 40);
@@ -505,9 +507,13 @@ function checkAndRunAiTurn() {
             const fireRad = (targetAngle * Math.PI) / 180;
             const speed = targetPower * 0.12;
             
-            socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
+            // ירי בפועל
+            socket.emit('fire', { 
+                vx: Math.cos(fireRad) * speed, 
+                vy: -Math.sin(fireRad) * speed, 
+                wType: aiWeaponType 
+            });
         }, 5000); 
-        
     }, 5000); 
 }
 
