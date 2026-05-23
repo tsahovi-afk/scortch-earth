@@ -473,13 +473,13 @@ function checkAndRunAiTurn() {
     statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
     statusDiv.style.color = "#ff3333";
 
-    // שלב 1: ניתוח מפה (2 שניות)
+    // ניתוח מפה: 5 שניות
     setTimeout(() => {
-        if (currentTurnId === myId || !gameActive || projectile) return;
+        if (!gameActive || currentTurnId === myId || projectile) return;
         
         const ai = gamePlayers[currentTurnId];
         
-        // בחירת טנק רנדומלי אם צריך
+        // בחירת טנק רנדומלית אם צריך
         if (ai.hp <= 0 && ai.lives > 0) {
             const types = ['medium', 'heavy', 'light'];
             ai.type = types[Math.floor(Math.random() * types.length)];
@@ -499,8 +499,12 @@ function checkAndRunAiTurn() {
             return;
         }
 
-        // שלב 2: תזמון פעולה רנדומלי (עד 10 שניות)
+        // בחירת נשק וביצוע ירי: 5 שניות
+        statusDiv.innerText = `המחשב (${ai.name}) מכוון...`;
+        
         setTimeout(() => {
+            if (!gameActive || currentTurnId === myId || projectile) return;
+
             let targetAngle = ai.x > targetPlayer.x ? 135 : 45;
             let distance = Math.abs(ai.x - targetPlayer.x);
             let targetPower = 40 + (distance * 0.06);
@@ -516,9 +520,9 @@ function checkAndRunAiTurn() {
             const speed = targetPower * 0.12;
             
             socket.emit('fire', { vx: Math.cos(fireRad) * speed, vy: -Math.sin(fireRad) * speed, wType: aiWeaponType });
-        }, Math.random() * 10000);
+        }, 5000);
         
-    }, 2000); 
+    }, 5000); 
 }
 
 function drawSkyAndCelestialBodies() {
