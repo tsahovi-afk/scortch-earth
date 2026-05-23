@@ -469,8 +469,10 @@ function rebuildTopUi() {
 
 function checkAndRunAiTurn() {
     if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
-    statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח...`;
     
+    statusDiv.innerText = `המחשב (${gamePlayers[currentTurnId].name}) מנתח מפה...`;
+    statusDiv.style.color = "#ff3333";
+
     // בוט יורה ב-3 השניות האחרונות של התור
     setTimeout(() => {
         if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
@@ -483,6 +485,7 @@ function checkAndRunAiTurn() {
         
         let angle = ai.x > target.x ? 135 : 45;
         let power = 50 + Math.random() * 20;
+        
         const rad = (angle * Math.PI) / 180;
         const speed = power * 0.12;
         
@@ -491,7 +494,7 @@ function checkAndRunAiTurn() {
             vy: -Math.sin(rad) * speed, 
             wType: 'normal' 
         });
-    }, 7000); // 7 שניות המתנה + 3 שניות אחרונות = 10 שניות
+    }, 7000); 
 }
 
 function drawSkyAndCelestialBodies() {
