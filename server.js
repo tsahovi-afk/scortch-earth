@@ -33,24 +33,21 @@ io.on('connection', (socket) => {
             lives: 3
         };
         
-        io.emit('lobbyUpdate', { players: Object.values(players) });
+        io.emit('lobbyUpdate', { players: Object.values(players).filter(p => !p.isAi) });
     });
 
     socket.on('startConfiguredGame', (data) => {
-        // ניקוי בוטים ישנים שנשארו בריצה קודמת
+        // ניקוי בוטים ישנים מהסבב
         for (let id in players) {
             if (players[id].isAi) delete players[id];
         }
 
         const totalSlotsRequested = parseInt(data.totalPlayers) || 2;
-        const aiCountRequested = parseInt(data.aiCount) || 0;
+        const aiCountRequested = parseInt(data.aiCount) || 1;
         
         const humanIds = Object.keys(players).filter(id => !players[id].isAi);
-        
-        // יצירת סבב התורות
         turnOrder = [...humanIds];
         
-        // הוספת בוטים של מחשב (AI)
         const aiNames = ['המחשל', 'צייד הבז', 'אלפא-בוט', 'ברזל כבד', 'זיקית רובוטית'];
         const aiColors = ['#ff3333', '#00ff00', '#33ccff', '#ffffff', '#ff00ff'];
         const aiTypes = ['medium', 'heavy', 'light'];
@@ -66,18 +63,19 @@ io.on('connection', (socket) => {
                 x: 0,
                 hp: 100,
                 maxHp: 100,
-                lives: 3,
-                inventory: { 1: Infinity, 2: 2, 3: 1 }
+                lives: 3
             };
             turnOrder.push(aiId);
         }
         
-        // חלוקת מיקומים שווה על פני המסך לכולם
         let totalActive = turnOrder.length;
         let step = 700 / (totalActive + 1);
         
         turnOrder.forEach((id, index) => {
             players[id].x = Math.floor(50 + (index + 1) * step);
+            let tType = players[id].type || 'medium';
+            if (tType === 'heavy') { players[id].hp = 150; players[id].maxHp = 150; }
+            if (tType === 'light') { players[id].hp = 75; players[id].maxHp = 75; }
         });
         
         gameInProgress = true;
@@ -98,9 +96,7 @@ io.on('connection', (socket) => {
 
     socket.on('fire', (data) => {
         if (turnOrder[currentTurnIndex] === socket.id) {
-            if (!data.special) {
-                io.emit('playerFired', { id: socket.id, vx: data.vx, vy: data.vy, wType: data.wType });
-            }
+            io.emit('playerFired', { id: socket.id, vx: data.vx, vy: data.vy, wType: data.wType });
             nextTurn();
         }
     });
