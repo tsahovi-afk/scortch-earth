@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - המהדורה המלאה</title>
+    <title>טנקים נגד טנקים - זירת הרים</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; background: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
@@ -22,9 +22,7 @@
 
     <div id="login-panel" class="panel">
         <h2>📝 טנקים נגד טנקים</h2>
-        <label>כינוי קרב:</label>
         <input type="text" id="p-name" value="צהובי">
-        <label>בחר צבע מותג:</label>
         <div>
             <div class="color-dot selected" style="background:#ffcc00" onclick="selectColor(this, '#ffcc00')"></div>
             <div class="color-dot" style="background:#ff3333" onclick="selectColor(this, '#ff3333')"></div>
@@ -75,6 +73,15 @@
 
         document.getElementById('share-link').value = window.location.origin;
 
+        function generateTerrain() {
+            terrain = [];
+            let offset = Math.random() * 100;
+            for(let x=0; x<800; x++) {
+                // יוצר גבעות ע"י שילוב של מספר סינוסים
+                terrain[x] = 400 + Math.sin(x * 0.01 + offset) * 50 + Math.cos(x * 0.02 + offset) * 25;
+            }
+        }
+
         function joinLobby() {
             document.getElementById('login-panel').style.display = 'none';
             document.getElementById('lobby-panel').style.display = 'block';
@@ -92,7 +99,7 @@
         socket = io();
         socket.on('gameStarted', (data) => {
             players = data.players;
-            for(let x=0; x<800; x++) terrain[x] = 400 + Math.sin(x*0.02)*40;
+            generateTerrain(); // יוצר הרים חדשים בכל משחק
             document.getElementById('lobby-panel').style.display = 'none';
             document.getElementById('game-container').style.display = 'block';
             gameActive = true;
@@ -104,7 +111,7 @@
             const ctx = document.getElementById('gameCanvas').getContext('2d');
             ctx.fillStyle = '#050510'; ctx.fillRect(0,0,800,500);
             
-            // אדמה
+            // ציור האדמה ההררית
             ctx.fillStyle = '#3a2512';
             ctx.beginPath(); ctx.moveTo(0, 500);
             for(let x=0; x<800; x++) ctx.lineTo(x, terrain[x]);
@@ -113,10 +120,11 @@
             // טנקים
             for(let id in players) {
                 let p = players[id];
+                let y = terrain[p.x] - 20; // גובה הטנק לפי השטח
                 ctx.fillStyle = p.color;
-                ctx.fillRect(p.x, terrain[p.x]-20, 30, 20); // גוף
+                ctx.fillRect(p.x, y, 30, 20); // גוף
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(p.x+10, terrain[p.x]-30, 10, 10); // תותח
+                ctx.fillRect(p.x + 10, y - 10, 10, 10); // תותח
             }
             requestAnimationFrame(render);
         }
