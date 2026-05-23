@@ -215,7 +215,6 @@ let oilDrops = [];
 const gravity = 0.15;
 
 let aiLastSpecs = {};
-let aiLastXLand = null;
 let playerMovesLeft = 5;
 let totalShotsFiredInGame = 0;
 let chosenColor = '#ffcc00';
@@ -470,21 +469,33 @@ function rebuildTopUi() {
 function checkAndRunAiTurn() {
     if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
     
-    // Logic: Aim and Fire
+    // AI Sequence: Move -> Select Weapon -> Aim -> Fire
     const ai = gamePlayers[currentTurnId];
     let target = Object.values(gamePlayers).find(p => p.id !== ai.id && p.hp > 0);
     if (!target) return;
+
+    // 1. Movement logic
+    if (Math.abs(ai.x - target.x) > 150) {
+        ai.x += (ai.x < target.x) ? 30 : -30;
+        socket.emit('move', { x: ai.x });
+    }
+
+    // 2. Select Weapon
+    let weapon = Object.keys(playerInventory)[Math.floor(Math.random() * 3) + 1];
     
-    let angle = ai.x > target.x ? 135 : 45;
-    let power = 60;
-    const rad = (angle * Math.PI) / 180;
-    const speed = power * 0.12;
-    
-    socket.emit('fire', { 
-        vx: Math.cos(rad) * speed, 
-        vy: -Math.sin(rad) * speed, 
-        wType: 'normal' 
-    });
+    // 3. Aiming and Firing
+    setTimeout(() => {
+        let angle = ai.x > target.x ? 135 : 45;
+        let power = 50 + Math.random() * 30;
+        const rad = (angle * Math.PI) / 180;
+        const speed = power * 0.12;
+        
+        socket.emit('fire', { 
+            vx: Math.cos(rad) * speed, 
+            vy: -Math.sin(rad) * speed, 
+            wType: playerInventory[weapon].type 
+        });
+    }, 1000);
 }
 
 function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
