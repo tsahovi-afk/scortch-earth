@@ -30,23 +30,27 @@
         margin: 0 auto;          /* ממרכז את הקנבס בתוך הקונטיינר */
     }
 
-.ui-overlay {
+..ui-overlay {
     position: absolute;
     top: 0;
     left: 0;
-    width: 1200px; /* תואם לקנבס */
-    height: 800px; /* תואם לקנבס */
-    z-index: 10;
+    width: 1200px;
+    height: 800px;
+    z-index: 999; /* הכי גבוה שיש */
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: rgba(0, 0, 0, 0.7); /* הרקע השחור */
-    pointer-events: none; /* קריטי: מאפשר ללחוץ על הטנקים מאחור! */
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
 }
 
-/* מוסיפים את זה כדי שהכפתורים בתוך התיבה כן יגיבו ללחיצה */
-.ui-overlay .button-grid, .ui-overlay .retro-title {
-    pointer-events: auto;
+.button-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
 }
 
 /* קלאס חדש לסידור הכפתורים בשורה */
