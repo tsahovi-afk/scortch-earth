@@ -31,6 +31,9 @@
     const ctx = canvas.getContext('2d');
     const uiOverlay = document.getElementById('ui-overlay');
     
+    // הגדרה בסיסית למשחק
+    let gameActive = false;
+
     function showStartScreen() {
         uiOverlay.style.display = "flex";
         uiOverlay.innerHTML = `
@@ -47,28 +50,35 @@
     }
 
     function startGame(players) {
+        gameActive = true; // כאן אנחנו מפעילים את המשחק!
+        uiOverlay.style.display = "none";
         console.log("משחק מתחיל עם " + players + " שחקנים");
-        uiOverlay.style.display = "none"; // התיבה נעלמת לגמרי
-        gameLoop();
+        
+        // כאן אתה יכול להוסיף את קריאות ה-Setup שלך
+        // initTanks(players); 
+        
+        gameLoop(); // מתחילים את הלופ
     }
 
-   function gameLoop() {
-    // 1. ניקוי המסך (מחיקת ה"המשחק מתנהל")
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, 1200, 800);
+    function gameLoop() {
+        if (!gameActive) return; // אם המשחק לא פעיל, אל תצייר
 
-    // 2. כאן נכנס הקוד שלך לציור הטנקים
-    // תוודא שהפונקציות שלך כמו drawTanks() או updateGame() נמצאות כאן
-    // לדוגמה:
-    // drawTerrain(); 
-    // drawTanks();
-    // drawPlane();
+        // 1. ניקוי המסך
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, 1200, 800);
 
-    // 3. החלק הכי חשוב - זה מה שיוצר את האנימציה החלקה
-    if (gameActive) {
+        // 2. כאן יבואו הפונקציות שלך:
+        // drawTerrain(); 
+        // drawTanks();
+        // drawPlane();
+        
+        // ציור בדיקה כדי לראות שהלופ עובד
+        ctx.fillStyle = "white";
+        ctx.fillText("המשחק רץ! הטנקים יופיעו כאן בקרוב.", 500, 400);
+
+        // 3. לופ אינסופי
         requestAnimationFrame(gameLoop);
     }
-}
 
     // הפעלה ראשונית
     showStartScreen();
