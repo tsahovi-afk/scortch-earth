@@ -242,8 +242,9 @@
         function showStartScreen() {
             gameState = "START_SCREEN";
             uiOverlay.innerHTML = `
-                <div class="retro-title">אדמה חרוכה</div>
-                <div style="font-size: 20px; 15px;">בחר כמות שחקנים (לכולם 3 חיים):</div>
+               console.log("Overlay height is:", uiOverlay.clientHeight);
+                <div class="retro-title">אדמה חרוכה</div>
+                <div style="font-size: 20px; בחר כמות שחקנים (לכולם 3 חיים):</div>
                 <div>
                     <button class="btn" onclick="selectPlayerCount(2)">2 טנקים</button>
                     <button class="btn" onclick="selectPlayerCount(3)">3 טנקים</button>
