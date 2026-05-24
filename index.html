@@ -252,21 +252,14 @@
        // 1. ככה נראה המסך פתיחה (דואג שהוא תמיד יחזור למרכז)
 function showStartScreen() {
     gameState = "START_SCREEN";
-    uiOverlay.style.display = "flex"; // מוודא שהיא נראית
-    
-    // בוא נבדוק אם הפקודה הזו אכן מכניסה את הכפתורים פנימה
+    uiOverlay.style.display = "flex"; 
     uiOverlay.innerHTML = `
-        <div class="retro-title" style="font-size: 40px; margin-bottom: 20px;">אדמה חרוכה</div>
-        <div style="font-size: 20px; margin-bottom: 25px;">בחר כמות שחקנים:</div>
+        <div style="color: white; margin-bottom: 20px;">בחר כמות שחקנים:</div>
         <div class="button-grid">
             <button class="btn" onclick="selectPlayerCount(2)">2 שחקנים</button>
             <button class="btn" onclick="selectPlayerCount(3)">3 שחקנים</button>
-            <button class="btn" onclick="selectPlayerCount(4)">4 שחקנים</button>
-            <button class="btn" onclick="selectPlayerCount(5)">5 שחקנים</button>
-            <button class="btn" onclick="selectPlayerCount(6)">6 שחקנים</button>
         </div>
     `;
-    console.log("Start screen rendered with buttons");
 }
 
 // 2. ככה נראה התחלת המשחק (דואג להעלים את התיבה לגמרי)
