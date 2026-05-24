@@ -2,738 +2,1174 @@
 <html lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טנקים נגד טנקים - מהדורת 6 שחקנים עם כפתורי מגע לנייד</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>אדמה חרוכה - תיקון מסגרת שמיים ואדמה</title>
     <style>
-        body { margin: 0; background-color: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none; }
-        #game-container { position: relative; display: none; }
-        canvas { border: 3px solid #ffcc00; background-color: #050510; display: block; max-width: 100vw; height: auto; }
-        
-        .ui-bar { position: absolute; top: 10px; width: calc(100% - 40px); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 0 20px; pointer-events: none; font-family: monospace; }
-        .ui-panel-box { background: rgba(0, 0, 0, 0.85); border: 2px solid #ffcc00; padding: 5px 10px; border-radius: 4px; min-width: 110px; text-align: center; box-shadow: 0 0 10px rgba(255, 204, 0, 0.1); }
-        .ui-panel-box h3 { margin: 0 0 2px 0; font-size: 13px; text-shadow: 1px 1px #000; }
-        .ui-panel-box div { font-size: 11px; margin: 1px 0; }
-        .active-turn-box { border-color: #00ff00 !important; box-shadow: 0 0 15px #00ff00 !important; }
-
-        #turn-timer-display { background: #000; border: 3px double #ffcc00; color: #ffcc00; font-size: 24px; font-weight: bold; padding: 5px 15px; border-radius: 4px; min-width: 50px; text-align: center; text-shadow: 0 0 8px #ff3333; box-shadow: 0 0 15px rgba(255, 51, 51, 0.3); }
-
-        #status { margin-top: 10px; font-size: 18px; font-weight: bold; color: #ffcc00; display: none; text-align: center; }
-        #controls-info { margin-top: 5px; font-size: 13px; color:#aaa; display: none; text-align: center; line-height: 1.5; }
-        
-        .panel { background-color: #222; padding: 25px; border: 2px solid #ffcc00; border-radius: 10px; text-align: center; width: 380px; max-width: 90vw; box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); box-sizing: border-box; }
-        h2 { margin-top: 0; color: #ffcc00; font-size: 22px; }
-        label { display: block; text-align: right; margin: 8px 0 4px 0; font-weight: bold; font-size: 14px; }
-        input, select { width: 100%; padding: 8px; box-sizing: border-box; background: #333; color: #fff; border: 1px solid #ffcc00; border-radius: 4px; font-size: 14px; }
-        
-        button { background-color: #ffcc00; color: #000; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; margin: 12px 4px 0 4px; cursor: pointer; border-radius: 5px; transition: 0.2s; box-shadow: 3px 3px 0px #997a00; }
-        button:hover { background-color: #ffee55; transform: scale(1.03); }
-        button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px #997a00; }
-        
-        .color-picker-grid { display: flex; justify-content: space-between; gap: 6px; margin: 10px 0 15px 0; background: #111; padding: 8px; border-radius: 6px; border: 1px solid #444; }
-        .color-dot { display: block; width: 45px; height: 35px; border: 2px solid #444; cursor: pointer; border-radius: 4px; transition: 0.1s; }
-        .color-dot:hover { transform: scale(1.08); border-color: #aaa; }
-        .color-dot.selected { border-color: #fff; box-shadow: 0 0 10px #fff; transform: scale(1.05); }
-
-        .share-container { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #555; display: flex; flex-direction: column; align-items: center; }
-        .share-label { font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold; text-align: center; }
-        .share-row { display: flex; width: 100%; gap: 5px; }
-        .share-link-input { font-family: monospace; background: #111; color: #ffcc00; border: 1px solid #444; padding: 6px; font-size: 12px; border-radius: 4px; text-align: center; pointer-events: none; width: 70%; }
-        .btn-copy { background: #333; color: #ffcc00; border: 1px solid #ffcc00; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 30%; box-shadow: none; margin: 0; }
-
-        #respawn-select-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5; align-items: center; justify-content: center; }
-        .tank-option { background: #333; border: 1px solid #555; padding: 10px; margin: 8px 0; border-radius: 5px; cursor: pointer; transition: 0.2s; text-align: right; }
-        .tank-option:hover { border-color: #ffcc00; background: #3c3c3c; }
-
-        #game-over-screen { display: none; position: absolute; z-index: 10; background-color: rgba(10, 10, 15, 0.95); border: 4px double #ffcc00; padding: 30px; text-align: center; min-width: 350px; box-shadow: 0 0 30px #ff3333; }
-        .game-over-title { font-size: 30px; font-weight: bold; color: #ff3333; margin-bottom: 15px; }
-        .stats-table { width: 100%; margin: 15px 0; border-collapse: collapse; text-align: right; font-size: 13px; }
-        .stats-table th { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding: 6px; }
-        .stats-table td { padding: 6px; border-bottom: 1px solid #444; }
-
-        #mobile-controls { display: none; width: 100%; max-width: 800px; justify-content: space-between; padding: 10px 20px; box-sizing: border-box; background: #151515; border-top: 2px solid #ffcc00; margin-top: auto; }
-        .touch-group { display: grid; gap: 8px; }
-        .left-dpad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 45px); }
-        .right-buttons { grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(2, 45px); justify-items: center; align-items: center; }
-        
-        .touch-btn { background: #222; color: #ffcc00; border: 2px solid #ffcc00; font-size: 16px; font-weight: bold; border-radius: 6px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; cursor: pointer; touch-action: manipulation; }
-        .touch-btn:active { background: #ffcc00; color: #000; }
-        .btn-fire-mobile { background: #cc2222; color: #fff; border-color: #ff3333; grid-column: span 2; grid-row: span 2; font-size: 18px; text-shadow: 1px 1px #000; height: 100%; }
-        .btn-fire-mobile:active { background: #ff3333; color: #fff; }
-        .btn-active-toggle { background: #9400d3; color: #fff; border-color: #ba55d3; }
+        body {
+            background-color: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+        }
+        canvas {
+            background-color: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 800px;
+            height: 500px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            box-sizing: border-box;
+            direction: rtl;
+        }
+        .retro-title {
+            font-size: 50px;
+            color: #FFD700;
+            text-shadow: 4px 4px #FF4500, 8px 8px #000;
+            margin-bottom: 30px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .btn {
+            background-color: #333;
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: Arial, sans-serif;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background-color: #FFD700;
+            color: black;
+            border-color: #FFD700;
+            transform: scale(1.05);
+        }
+        .names-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+            max-width: 750px;
+            max-height: 240px;
+            overflow-y: auto;
+            padding-left: 10px;
+        }
+        .name-input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.75);
+            padding: 6px 12px;
+            border: 1px solid #555;
+        }
+        .name-input-group label {
+            width: 70px;
+            font-size: 14px;
+            text-align: right;
+            font-weight: bold;
+        }
+        .name-input-group input {
+            background: #222;
+            border: 1px solid white;
+            color: white;
+            padding: 5px;
+            font-size: 14px;
+            width: 100px;
+            text-align: center;
+            margin-left: 10px;
+        }
+        .name-input-group select {
+            background: #333;
+            border: 1px solid white;
+            color: white;
+            padding: 4px;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+        .respawn-box {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #FFD700;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px #FFD700;
+        }
     </style>
-    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-    <div id="login-panel" class="panel">
-        <h2>📝 טנקים נגד טנקים - רישום</h2>
-        <label>כינוי קרב:</label>
-        <input type="text" id="player-name-input" value="צהובי">
-        
-        <label>בחר צבע מותג:</label>
-        <div class="color-picker-grid">
-            <div class="color-dot selected" style="background-color:#ffcc00" onclick="pickColor(this, '#ffcc00')"></div>
-            <div class="color-dot" style="background-color:#ff3333" onclick="pickColor(this, '#ff3333')"></div>
-            <div class="color-dot" style="background-color:#00ff00" onclick="pickColor(this, '#00ff00')"></div>
-            <div class="color-dot" style="background-color:#33ccff" onclick="pickColor(this, '#33ccff')"></div>
-            <div class="color-dot" style="background-color:#ffffff" onclick="pickColor(this, '#ffffff')"></div>
-            <div class="color-dot" style="background-color:#222222; border: 2px dashed #ffcc00" onclick="pickColor(this, '#222222')"></div>
-        </div>
-
-        <button onclick="connectToLobby()">התחבר ללובי המשחק 🌐</button>
-
-        <div class="share-container">
-            <div class="share-label">🔗 שלח לחבר כדי שישחק איתך אונליין:</div>
-            <div class="share-row">
-                <input type="text" id="share-link-field" class="share-link-input" value="טוען קישור...">
-                <button id="copy-link-btn" class="btn-copy" onclick="copyGameUrl()">📋 העתק</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="lobby-panel" class="panel" style="display:none;">
-        <h2>⚙️ טנקים נגד טנקים - הגדרות זירה</h2>
-        <div id="lobby-connected-list" style="font-size:13px; background:#111; padding:10px; border-radius:4px; text-align:right; margin-bottom:15px;">שחקנים מחוברים: טוען...</div>
-        
-        <label>סה"כ שחקנים בזירה (שחקנים + מחשב):</label>
-        <select id="total-players-select">
-            <option value="2" selected>2 משתתפים</option>
-            <option value="3">3 משתתפים</option>
-            <option value="4">4 משתתפים</option>
-            <option value="5">5 משתתפים</option>
-            <option value="6">6 משתתפים</option>
-        </select>
-
-        <label>מתוכם - כמה יהיו בוטים של מחשב (AI)?</label>
-        <select id="ai-players-select">
-            <option value="0">0 בוטים (רק שחקני אונליין)</option>
-            <option value="1" selected>1 בוט מחשב</option>
-            <option value="2">2 בוטים של מחשב</option>
-            <option value="3">3 בוטים של מחשב</option>
-            <option value="4">4 בוטים של מחשב</option>
-            <option value="5">5 בוטים של מחשב</option>
-        </select>
-
-        <label>בחר דגם טנק פתיחה:</label>
-        <select id="start-tank-type">
-            <option value="medium">🚀 טנק צייד (Medium - 100 HP)</option>
-            <option value="heavy">🐘 טנק ממותה (Heavy - 150 HP)</option>
-            <option value="light">⚡ טנק זיקית (Light - 75 HP)</option>
-        </select>
-
-        <button onclick="startGameEngine()">שגר משחק לאוויר! 🚀</button>
-    </div>
-
     <div id="game-container">
-        <div id="respawn-select-overlay">
-            <div class="panel" style="max-width: 380px; border-color: #ff3333; background: #1a1a24;">
-                <h3 style="color: #ff3333; margin-top: 0; font-size:18px;">💥 הטנק שלך נהרס! 💥</h3>
-                <p style="font-size:14px;">בחר דגם חדש כדי לחזור מיד במקום שלך לזירה:</p>
-                <div class="tank-option" onclick="executeRespawn('medium')"><strong>🚀 טנק צייד</strong> (100 HP)</div>
-                <div class="tank-option" onclick="executeRespawn('heavy')"><strong>🐘 טנק ממותה</strong> (150 HP)</div>
-                <div class="tank-option" onclick="executeRespawn('light')"><strong>⚡ טנק זיקית</strong> (75 HP)</div>
-            </div>
-        </div>
-
-        <div id="dynamic-ui-bar" class="ui-bar"></div>
         <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="uiOverlay" class="ui-overlay"></div>
     </div>
 
-    <div id="game-over-screen">
-        <div id="go-title" class="game-over-title">GAME OVER</div>
-        <h3 id="go-winner" style="color: #ffcc00; margin-bottom: 15px;">שחקן ניצח!</h3>
-        
-        <table class="stats-table">
-            <thead>
-                <tr>
-                    <th>סטטיסטיקת המערכה</th>
-                    <th style="color: #ffcc00;">אתה</th>
-                    <th style="color: #ff3333;">המחשב/אחר</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>פגזים שנורו בזירה</td>
-                    <td id="stat-shots-player">0</td>
-                    <td id="stat-shots-ai">0</td>
-                </tr>
-                <tr>
-                    <td>פגיעות מוצלחות</td>
-                    <td id="stat-hits-player">0</td>
-                    <td id="stat-hits-ai">0</td>
-                </tr>
-                <tr>
-                    <td>צעדי תמרון ודלק</td>
-                    <td id="stat-moves-player">0</td>
-                    <td id="stat-moves-ai">0</td>
-                </tr>
-            </tbody>
-        </table>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const uiOverlay = document.getElementById("uiOverlay");
 
-        <button onclick="location.reload()">🔄 משחק חדש</button>
-    </div>
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
 
-    <div id="mobile-controls">
-        <div class="touch-group left-dpad">
-            <div></div><div class="touch-btn" id="m-up">▲</div><div></div>
-            <div class="touch-btn" id="m-left">◀</div><div class="touch-btn" id="m-shift" style="font-size:12px;">SHIFT</div><div class="touch-btn" id="m-right">▶</div>
-            <div></div><div class="touch-btn" id="m-down">▼</div><div></div>
-        </div>
-        
-        <div class="touch-group right-buttons">
-            <div class="touch-btn" id="m-w1">1</div>
-            <div class="touch-btn" id="m-w2">2</div>
-            <div class="touch-btn" id="m-w3">3</div>
-            <div></div>
-            <div class="touch-btn btn-fire-mobile" id="m-fire">FIRE</div>
-        </div>
-    </div>
+        const terrain = [];
 
-    <div id="status">טוען...</div>
-    <div id="controls-info">
-        <strong>קנה וכוח:</strong> חצים למעלה/למטה (זווית), חצים ימינה/שמאלה (עוצמה) | <strong>🔥 אש:</strong> רווח<br>
-        <strong>🎒 נשקים:</strong> מקש [1] פגז רגיל | מקש [2] פגז מתפצל (3) | מקש [3] פצצת שמן נוזלי (3)<br>
-        <strong>🚙 תנועה טקטית:</strong> Shift + חץ ימינה/שמאלה (עד 5 צעדים בתור, זזת - התור עובר!)
-    </div>
+        // --- מערכת סאונד רטרו ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-<script>
-let socket;
-let isAiMode = true; 
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const statusDiv = document.getElementById('status');
-
-let myId = '';
-let gameActive = false;
-let currentTurnId = null;
-let gamePlayers = {};
-let turnOrder = [];
-let projectile = null;
-let clusterProjectiles = []; 
-let oilDrops = [];
-const gravity = 0.15;
-
-let aiLastSpecs = {};
-let aiLastXLand = null;
-let playerMovesLeft = 5;
-let totalShotsFiredInGame = 0;
-let chosenColor = '#ffcc00';
-
-let turnSecondsLeft = 10;
-let turnTimerInterval = null;
-
-let playerInventory = {
-    1: { name: "פגז רגיל", ammo: Infinity, type: "normal" },
-    2: { name: "פגז מתפצל", ammo: 3, type: "cluster" },
-    3: { name: "שמן נוזלי", ammo: 3, type: "oil" }
-};
-let selectedWeaponKey = 1;
-
-let stats = { player: { shots: 0, hits: 0, moves: 0 }, globalOther: { shots: 0, hits: 0, moves: 0 } };
-
-const TANK_TYPES = {
-    medium: { width: 24, height: 12, maxHp: 100 },
-    heavy: { width: 34, height: 16, maxHp: 150 },
-    light: { width: 16, height: 8, maxHp: 75 }
-};
-
-const terrain = [];
-let myAngle = 45;
-let myPower = 50;
-let audioCtx = null;
-
-function initializeShareLink() {
-    const linkField = document.getElementById('share-link-field');
-    if (linkField) {
-        let cleanUrl = window.location.href.replace(/(^\w+:|^)\/\//, '');
-        if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
-        linkField.value = cleanUrl;
-    }
-}
-
-window.copyGameUrl = function() {
-    const fullUrl = window.location.href;
-    navigator.clipboard.writeText(fullUrl).then(() => {
-        const btn = document.getElementById('copy-link-btn');
-        btn.innerText = "✓ הועתק!";
-        btn.style.color = "#00ff00";
-        btn.style.borderColor = "#00ff00";
-        setTimeout(() => {
-            btn.innerText = "📋 העתק";
-            btn.style.color = "#ffcc00";
-            btn.style.borderColor = "#ffcc00";
-        }, 2000);
-    }).catch(err => {
-        console.error("שגיאה בהעתקת הקישור: ", err);
-    });
-}
-
-function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-
-function playLaserSound() {
-    initAudio(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = 'square'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.12, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-}
-
-function playExplosionSound() {
-    initAudio(); const bufferSize = audioCtx.sampleRate * 0.3; const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
-    const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(180, audioCtx.currentTime); filter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
-    const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.22, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start();
-}
-
-function playMoveSound() {
-    initAudio(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(60, audioCtx.currentTime);
-    osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.04, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.08);
-}
-
-function playRespawnSound() {
-    initAudio(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = 'sine'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.4);
-    gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-}
-
-function pickColor(element, color) {
-    document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
-    element.classList.add('selected');
-    chosenColor = color;
-}
-
-function connectToLobby() {
-    initAudio();
-    const pName = document.getElementById('player-name-input').value || 'צהובי';
-    document.getElementById('login-panel').style.display = 'none';
-    document.getElementById('lobby-panel').style.display = 'block';
-    
-    socket = io();
-    socket.on('connect', () => {
-        myId = socket.id;
-        socket.emit('joinLobby', { name: pName, color: chosenColor });
-    });
-
-    socket.on('lobbyUpdate', (data) => {
-        let listHtml = "<strong>שחקנים ברשת המחוברים בחדר:</strong><br>";
-        data.players.forEach(p => {
-            listHtml += `<span style="color:${p.color}">■</span> ${p.name} ${p.id === myId ? '(אתה)' : ''}<br>`;
-        });
-        document.getElementById('lobby-connected-list').innerHTML = listHtml;
-    });
-
-    socket.on('gameStarted', (data) => {
-        gamePlayers = data.players;
-        turnOrder = data.turnOrder;
-        currentTurnId = data.currentTurnId;
-        
-        for(let id in gamePlayers) {
-            let pType = gamePlayers[id].type || 'medium';
-            gamePlayers[id].maxHp = TANK_TYPES[pType].maxHp;
-            gamePlayers[id].hp = TANK_TYPES[pType].maxHp;
-            gamePlayers[id].lives = 3;
-            if(!aiLastSpecs[id]) aiLastSpecs[id] = { angle: id === myId ? 45 : 135, power: 55 };
+        function playShootSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
         }
 
-        for (let x = 0; x < canvas.width; x++) {
-            terrain[x] = 380 + Math.sin(x * 0.015) * 45 + Math.cos(x * 0.03) * 15;
+        function playExplosionSound() {
+            const bufferSize = audioCtx.sampleRate * 0.4;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "lowpass";
+            filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+            filter.frequency.linearRampToValueAtTime(10, audioCtx.currentTime + 0.4);
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start();
+            noise.stop(audioCtx.currentTime + 0.4);
         }
 
-        document.getElementById('lobby-panel').style.display = 'none';
-        showGameLayout();
-        gameActive = true;
-        rebuildTopUi();
-        updateStatusText();
-        
-        requestAnimationFrame(draw);
-        startTurnTimer(); 
-        checkAndRunAiTurn();
-    });
-
-    socket.on('playerAimed', (data) => {
-        if (gamePlayers[data.id]) {
-            gamePlayers[data.id].angle = data.angle;
-            gamePlayers[data.id].power = data.power;
+        function playVictoryFanfare() {
+            const now = audioCtx.currentTime;
+            const notes = [
+                { f: 261.63, d: 0.10 },
+                { f: 329.63, d: 0.10 },
+                { f: 392.00, d: 0.10 },
+                { f: 523.25, d: 0.50 }
+            ];
+            let currentOffset = 0;
+            notes.forEach(note => {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc1.type = "square";
+                osc2.type = "triangle";
+                osc1.frequency.setValueAtTime(note.f, now + currentOffset);
+                osc2.frequency.setValueAtTime(note.f * 1.005, now + currentOffset);
+                gain.gain.setValueAtTime(0.15, now + currentOffset);
+                gain.gain.linearRampToValueAtTime(0.01, now + currentOffset + note.d);
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc1.start(now + currentOffset);
+                osc2.start(now + currentOffset);
+                osc1.stop(now + currentOffset + note.d);
+                osc2.stop(now + currentOffset + note.d);
+                currentOffset += note.d + 0.02;
+            });
         }
-    });
 
-    socket.on('playerFired', (data) => {
-        const shootingTank = gamePlayers[data.id]; 
-        if (!shootingTank) return;
-        const tSpecs = TANK_TYPES[shootingTank.type];
-        playLaserSound();
-        
-        if(data.id === myId) stats.player.shots++; else stats.globalOther.shots++;
-        totalShotsFiredInGame++; 
-        
-        projectile = { x: shootingTank.x, y: terrain[shootingTank.x] - tSpecs.height, vx: data.vx, vy: data.vy, owner: data.id, wType: data.wType || "normal", hasSplit: false };
-    });
+        // --- ניהול מצבי משחק ---
+        let gameState = "START_SCREEN"; 
+        let playerCount = 2;
 
-    socket.on('playerMoved', (data) => {
-        if (gamePlayers[data.id]) {
-            gamePlayers[data.id].x = data.x;
-            if(data.id !== myId) stats.globalOther.moves++;
+        const playerColors = ["#FFD700", "#00FF00", "#00FFFF", "#FF00FF", "#FF4500", "#9370DB"];
+        const defaultNames = ["צהובי", "בוט א'", "בוט ב'", "בוט ג'", "בוט ד'", "בוט ה'"];
+        
+        let players = [];
+        let currentPlayerIndex = 0;
+        let gameActive = true;
+        let winnerName = "";
+        let botTimer = null;
+        let playerWaitingForRespawnIndex = null;
+
+        // --- ספירת יריות עבור הרקע המשתנה ---
+        let totalShotsFired = 0;
+
+        // --- הגדרות פיזיקה וסביבה ---
+        const GRAVITY = 0.15;
+        let wind = 0;
+
+        // --- פגזים, פיצוצים ושלוליות שמן בוערות ---
+        let activeMissiles = [];
+        let activeExplosions = [];
+        let activeOilPuddles = [];
+
+        // --- ניהול תפריטים ---
+        
+        function showStartScreen() {
+            gameState = "START_SCREEN";
+            uiOverlay.innerHTML = `
+                <div class="retro-title">אדמה חרוכה</div>
+                <div style="font-size: 20px; margin-bottom: 15px;">בחר כמות שחקנים (לכולם 3 חיים):</div>
+                <div>
+                    <button class="btn" onclick="selectPlayerCount(2)">2 טנקים</button>
+                    <button class="btn" onclick="selectPlayerCount(3)">3 טנקים</button>
+                    <button class="btn" onclick="selectPlayerCount(4)">4 טנקים</button>
+                    <button class="btn" onclick="selectPlayerCount(5)">5 טנקים</button>
+                    <button class="btn" onclick="selectPlayerCount(6)">6 טנקים</button>
+                </div>
+            `;
         }
-    });
 
-    socket.on('nextTurn', (data) => {
-        currentTurnId = data.currentTurnId;
-        playerMovesLeft = 5;
-        rebuildTopUi();
-        startTurnTimer(); 
-        setTimeout(() => { updateStatusText(); checkAndRunAiTurn(); }, 1200);
-    });
-}
+        function selectPlayerCount(count) {
+            playerCount = count;
+            showNamesScreen();
+        }
 
-function startTurnTimer() {
-    clearInterval(turnTimerInterval);
-    turnSecondsLeft = 10;
-    updateTimerDisplay();
-    
-    turnTimerInterval = setInterval(() => {
-        if (!gameActive || projectile) return; 
-        
-        turnSecondsLeft--;
-        updateTimerDisplay();
-        
-        if (turnSecondsLeft <= 0) {
-            clearInterval(turnTimerInterval);
-            statusDiv.innerText = "⏱️ נגמר הזמן! התור עובר אוטומטית...";
-            statusDiv.style.color = "#ff3333";
+        function showNamesScreen() {
+            gameState = "NAMES_SCREEN";
+            let inputsHTML = "";
             
-            if (currentTurnId === myId) {
-                endTurnWithMovement(); 
-            } else if (gamePlayers[currentTurnId] && gamePlayers[currentTurnId].isAi) {
-                socket.emit('aiFinishedTurn'); 
+            for (let i = 0; i < playerCount; i++) {
+                let isBotDefault = i === 0 ? "human" : "bot";
+                let diffDefault = i === 1 ? "medium" : "easy";
+                let sizeDefault = i === 0 ? "large" : (i === 1 ? "medium" : "small");
+                
+                inputsHTML += `
+                    <div class="name-input-group">
+                        <label style="color: ${playerColors[i]}">טנק ${i+1}:</label>
+                        <input type="text" id="pName${i}" value="${defaultNames[i]}" maxlength="10">
+                        
+                        <select id="pSize${i}">
+                            <option value="small" ${sizeDefault === 'small' ? 'selected' : ''}>טנק התחלתי: קטן ⚡</option>
+                            <option value="medium" ${sizeDefault === 'medium' ? 'selected' : ''}>טנק התחלתי: בינוני</option>
+                            <option value="large" ${sizeDefault === 'large' ? 'selected' : ''}>טנק התחלתי: גדול 🔥</option>
+                        </select>
+
+                        <select id="pType${i}" onchange="toggleDifficultyVisibility(${i})">
+                            <option value="human" ${isBotDefault === 'human' ? 'selected' : ''}>שחקן</option>
+                            <option value="bot" ${isBotDefault === 'bot' ? 'selected' : ''}>מחשב</option>
+                        </select>
+
+                        <select id="pDiff${i}" style="display: ${isBotDefault === 'bot' ? 'inline-block' : 'none'}">
+                            <option value="easy" ${diffDefault === 'easy' ? 'selected' : ''}>רמה: קל</option>
+                            <option value="medium" ${diffDefault === 'medium' ? 'selected' : ''}>רמה: בינוני</option>
+                            <option value="hard" ${diffDefault === 'hard' ? 'selected' : ''}>רמה: קשה</option>
+                        </select>
+                    </div>
+                `;
             }
+
+            uiOverlay.innerHTML = `
+                <div class="retro-title" style="font-size: 35px; margin-bottom: 15px;">הגדרת צבאות</div>
+                <div class="names-grid">${inputsHTML}</div>
+                <button class="btn" style="width: 200px;" onclick="startGame()">קרב! 🚀</button>
+            `;
         }
-    }, 1000);
-}
 
-function resetTurnTimerOnAim() {
-    if (gameActive && !projectile && currentTurnId === myId) {
-        turnSecondsLeft = 10;
-        updateTimerDisplay();
-    }
-}
-
-function updateTimerDisplay() {
-    const timerBox = document.getElementById('turn-timer-display');
-    if (timerBox) {
-        timerBox.innerText = turnSecondsLeft;
-        timerBox.style.color = turnSecondsLeft <= 3 ? "#ff0000" : "#ffcc00";
-        timerBox.style.borderColor = turnSecondsLeft <= 3 ? "#ff0000" : "#ffcc00";
-    }
-}
-
-function startGameEngine() {
-    const totalPlayers = document.getElementById('total-players-select').value;
-    const aiCount = document.getElementById('ai-players-select').value;
-    const startTank = document.getElementById('start-tank-type').value;
-    socket.emit('startConfiguredGame', { totalPlayers: totalPlayers, aiCount: aiCount, type: startTank });
-}
-
-function rebuildTopUi() {
-    const uiBar = document.getElementById('dynamic-ui-bar');
-    uiBar.innerHTML = '';
-    
-    const timerElement = document.createElement('div');
-    timerElement.id = 'turn-timer-display';
-    timerElement.innerText = turnSecondsLeft;
-    uiBar.appendChild(timerElement);
-    
-    turnOrder.forEach(id => {
-        const p = gamePlayers[id];
-        if (!p) return;
-        const box = document.createElement('div');
-        box.className = 'ui-panel-box';
-        if (id === currentTurnId) box.classList.add('active-turn-box');
-        box.style.borderColor = p.color;
-        box.innerHTML = `
-            <h3 style="color:${p.color}">${p.name}</h3>
-            <div>HP: ${p.hp}/${p.maxHp}</div>
-            <div>טנקים: ${"🔴".repeat(Math.max(0, p.lives))}</div>
-        `;
-        uiBar.appendChild(box);
-    });
-}
-
-// התיקון היחיד:
-function checkAndRunAiTurn() {
-    if (!gameActive || !gamePlayers[currentTurnId] || !gamePlayers[currentTurnId].isAi) return;
-    
-    // בוט יורה ב-2 שניות מהרגע שהתור מתחיל
-    setTimeout(() => {
-        const ai = gamePlayers[currentTurnId];
-        let target = Object.values(gamePlayers).find(p => p.id !== ai.id && p.hp > 0);
-        if (!target) return;
-        
-        // חישוב ירי בסיסי
-        let angle = ai.x > target.x ? 135 : 45;
-        let power = 50 + Math.random() * 20;
-        const rad = (angle * Math.PI) / 180;
-        const speed = power * 0.12;
-        
-        socket.emit('fire', { 
-            vx: Math.cos(rad) * speed, 
-            vy: -Math.sin(rad) * speed, 
-            wType: 'normal' 
-        });
-    }, 2000);
-}
-
-function checkExplosionDamage(craterX, customMaxDamage = 50, radius = 35) {
-    for (let id in gamePlayers) {
-        const p = gamePlayers[id]; if (p.hp <= 0) continue;
-        const tSpecs = TANK_TYPES[p.type]; const halfWidth = tSpecs.width / 2;
-        let distanceToTank = 0;
-        if (craterX < p.x - halfWidth) distanceToTank = (p.x - halfWidth) - craterX;
-        else if (craterX > p.x + halfWidth) distanceToTank = craterX - (p.x + halfWidth);
-
-        if (distanceToTank < radius) {
-            const damage = Math.floor((1 - (distanceToTank / radius)) * customMaxDamage);
-            if (damage > 0) {
-                p.hp = Math.max(0, p.hp - damage);
-                if (id === myId) stats.globalOther.hits++; else if(p.isAi) stats.player.hits++;
-            }
+        function toggleDifficultyVisibility(index) {
+            let typeSelect = document.getElementById(`pType${index}`);
+            let diffSelect = document.getElementById(`pDiff${index}`);
+            diffSelect.style.display = (typeSelect.value === "bot") ? "inline-block" : "none";
         }
-    }
 
-    for (let id in gamePlayers) {
-        const p = gamePlayers[id];
-        if (p.hp <= 0 && p.lives > 0) {
-            p.lives--; rebuildTopUi();
-            if (p.lives > 0) {
-                if (id === myId) handlePlayerDeath(); else { p.hp = p.maxHp; playRespawnSound(); }
+        function applyTankStats(tank, size) {
+            tank.size = size;
+            if (size === "large") {
+                tank.width = 24; tank.height = 13; tank.barrelLength = 16; tank.explosionRadius = 49; tank.damageMultiplier = 1.4;
+            } else if (size === "small") {
+                tank.width = 12; tank.height = 7; tank.barrelLength = 10; tank.explosionRadius = 24.5; tank.damageMultiplier = 0.7;
             } else {
-                let activePlayers = turnOrder.filter(pid => gamePlayers[pid] && gamePlayers[pid].lives > 0);
-                if (activePlayers.length <= 1) {
-                    let winnerName = activePlayers.length === 1 ? gamePlayers[activePlayers[0]].name : "אף אחד";
-                    triggerGameOver(winnerName); break;
-                }
+                tank.width = 18; tank.height = 10; tank.barrelLength = 13; tank.explosionRadius = 35; tank.damageMultiplier = 1.0;
             }
         }
-    }
-}
 
-function handlePlayerDeath() { clearInterval(turnTimerInterval); document.getElementById('respawn-select-overlay').style.display = 'flex'; }
-window.executeRespawn = function(type) { document.getElementById('respawn-select-overlay').style.display = 'none'; const p = gamePlayers[myId]; p.type = type; p.hp = TANK_TYPES[type].maxHp; p.maxHp = TANK_TYPES[type].maxHp; playRespawnSound(); rebuildTopUi(); startTurnTimer(); }
+        function startGame() {
+            players = [];
+            let spacing = WIDTH / (playerCount + 1);
 
-function triggerGameOver(winnerName) { gameActive = false; clearInterval(turnTimerInterval); document.getElementById('game-over-screen').style.display = 'block'; document.getElementById('go-winner').innerText = `${winnerName} ניצח את המערכה! 🏆`; document.getElementById('stat-shots-player').innerText = stats.player.shots; document.getElementById('stat-shots-ai').innerText = stats.globalOther.shots; document.getElementById('stat-hits-player').innerText = stats.player.hits; document.getElementById('stat-hits-ai').innerText = stats.globalOther.hits; document.getElementById('stat-moves-player').innerText = stats.player.moves; document.getElementById('stat-moves-ai').innerText = stats.globalOther.moves; }
+            for (let i = 0; i < playerCount; i++) {
+                let nameInput = document.getElementById(`pName${i}`);
+                let typeSelect = document.getElementById(`pType${i}`);
+                let diffSelect = document.getElementById(`pDiff${i}`);
+                let sizeSelect = document.getElementById(`pSize${i}`);
+                
+                let chosenName = nameInput.value.trim() || `טנק ${i+1}`;
+                let isBot = typeSelect.value === "bot";
+                let defaultAngle = (spacing * (i + 1) < WIDTH / 2) ? 45 : 135;
 
-function draw() {
-    if (!gameActive) return;
-    drawSkyAndCelestialBodies();
-    
-    ctx.beginPath(); ctx.moveTo(0, canvas.height);
-    for (let x = 0; x < canvas.width; x++) ctx.lineTo(x, terrain[x]);
-    ctx.lineTo(canvas.width, canvas.height); ctx.fillStyle = '#3a2512'; ctx.fill();
+                let newTank = {
+                    id: i,
+                    x: Math.floor(spacing * (i + 1)),
+                    y: 0,
+                    color: playerColors[i],
+                    angle: defaultAngle,
+                    power: 50,
+                    hp: 100,
+                    lives: 3,
+                    name: chosenName,
+                    isBot: isBot,
+                    difficulty: diffSelect.value,
+                    selectedWeapon: "standard", 
+                    ammo: {
+                        standard: Infinity,
+                        oil: 3,    
+                        cluster: 3 
+                    }
+                };
+                
+                applyTankStats(newTank, sizeSelect.value);
+                players.push(newTank);
+            }
 
-    for (let id in gamePlayers) {
-        const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type]; const tankY = terrain[Math.floor(p.x)];
-        if (p.hp <= 0 && p.lives <= 0) continue;
+            uiOverlay.innerHTML = "";
+            gameState = "PLAYING";
+            gameActive = true;
+            currentPlayerIndex = 0;
+            totalShotsFired = 0; 
+            activeMissiles = [];
+            activeExplosions = [];
+            activeOilPuddles = [];
+            
+            generateTerrain();
+            checkAndTriggerBot();
+        }
+
+        function openRespawnMenu(playerIndex) {
+            gameState = "RESPAWN_SCREEN";
+            playerWaitingForRespawnIndex = playerIndex;
+            let p = players[playerIndex];
+
+            let buttonsHTML = "";
+            if (p.size !== "large") {
+                buttonsHTML += `<button class="btn" onclick="confirmRespawn('large')">גדול (נזק כבד, פגיע)</button>`;
+            }
+            if (p.size !== "medium") {
+                buttonsHTML += `<button class="btn" onclick="confirmRespawn('medium')">בינוני (מאוזן)</button>`;
+            }
+            if (p.size !== "small") {
+                buttonsHTML += `<button class="btn" onclick="confirmRespawn('small')">קטן (קטן, נזק קל)</button>`;
+            }
+
+            let previousSizeHebrew = p.size === "large" ? "גדול" : (p.size === "small" ? "קטן" : "בינוני");
+
+            uiOverlay.innerHTML = `
+                <div class="respawn-box">
+                    <div style="font-size: 24px; color: ${p.color}; font-weight: bold; margin-bottom: 10px;">${p.name} הושמד!</div>
+                    <div style="font-size: 15px; margin-bottom: 20px;">הטנק ה**${previousSizeHebrew}** שלך קרס. נשארו לך ${p.lives} חיים. בחר סוג טנק אחר להמשך:</div>
+                    <div>
+                        ${buttonsHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function confirmRespawn(chosenSize) {
+            let p = players[playerWaitingForRespawnIndex];
+            applyTankStats(p, chosenSize);
+            p.hp = 100;
+            p.y = terrain[p.x];
+
+            uiOverlay.innerHTML = "";
+            gameState = "PLAYING";
+            
+            processNextTurnLogic();
+        }
+
+        function handleBotRespawn(playerIndex) {
+            let p = players[playerIndex];
+            let availableSizes = ["small", "medium", "large"].filter(size => size !== p.size);
+            let randomSize = availableSizes[Math.floor(Math.random() * availableSizes.length)];
+            
+            applyTankStats(p, randomSize);
+            p.hp = 100;
+            p.y = terrain[p.x];
+        }
+
+        function moveTank(tank, direction) {
+            let moveSpeed = 15;
+            let targetX = tank.x + (direction * moveSpeed);
+            
+            if (targetX < 20 || targetX > WIDTH - 20) return;
+            
+            for (let i = 0; i < players.length; i++) {
+                let other = players[i];
+                if (other !== tank && other.lives > 0 && other.hp > 0) {
+                    if (Math.abs(targetX - other.x) < 25) return;
+                }
+            }
+            
+            tank.x = targetX;
+            tank.y = terrain[tank.x];
+        }
+
+        // --- בינה מלאכותית (AI) ---
         
-        ctx.save(); ctx.fillStyle = '#1e1e1e'; ctx.fillRect(p.x - (tSpecs.width / 2), tankY - 4, tSpecs.width, 4); 
-        ctx.fillStyle = p.color; ctx.fillRect(p.x - (tSpecs.width / 2) + 2, tankY - tSpecs.height, tSpecs.width - 4, tSpecs.height - 3); 
-        ctx.beginPath(); ctx.arc(p.x, tankY - tSpecs.height + 1, tSpecs.width / 4, Math.PI, 0); ctx.fillStyle = '#fff'; ctx.fill(); 
-
-        const angleToUse = id === myId ? myAngle : (p.angle || (p.x > 400 ? 135 : 45));
-        const rad = (angleToUse * Math.PI) / 180;
-        ctx.beginPath(); ctx.moveTo(p.x, tankY - tSpecs.height); ctx.lineTo(p.x + Math.cos(rad) * (tSpecs.width * 0.7), (tankY - tSpecs.height) - Math.sin(rad) * (tSpecs.width * 0.7));
-        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = Math.max(2, tSpecs.width / 8); ctx.stroke(); ctx.restore();
-
-        if (id === currentTurnId && gameActive && id === myId) {
-            ctx.font = "bold 11px monospace"; ctx.fillStyle = "#ffcc00"; ctx.textAlign = "center";
-            ctx.fillText("POWER: " + Math.floor(myPower), p.x, tankY - tSpecs.height - 10);
-        }
-    }
-
-    if (projectile) {
-        projectile.vy += gravity; projectile.x += projectile.vx; projectile.y += projectile.vy;
-        ctx.beginPath();
-        if(projectile.wType === 'oil') ctx.ellipse(projectile.x, projectile.y, 6, 4, Math.atan2(projectile.vy, projectile.vx), 0, Math.PI * 2);
-        else ctx.arc(projectile.x, projectile.y, projectile.wType === 'cluster' ? 7 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = projectile.wType === 'oil' ? '#00ffcc' : '#ff3333'; ctx.fill();
-
-        if (!projectile.hasSplit && projectile.vy > 0.2) {
-            if (projectile.wType === 'cluster') {
-                projectile.hasSplit = true;
-                for (let i = -2; i <= 1; i++) clusterProjectiles.push({ x: projectile.x, y: projectile.y, vx: projectile.vx + (i * 0.8), vy: projectile.vy + 0.5, owner: projectile.owner });
-                projectile = null; 
-            } else if (projectile.wType === 'oil') {
-                projectile.hasSplit = true;
-                for (let i = 0; i < 6; i++) oilDrops.push({ x: projectile.x + (i * 3 - 9), y: projectile.y, vx: projectile.vx * 0.7 + (Math.random() - 0.5), vy: projectile.vy * 0.8, owner: projectile.owner, life: 150 });
-                projectile = null;
+        function checkAndTriggerBot() {
+            if (!gameActive || gameState !== "PLAYING") return;
+            let current = players[currentPlayerIndex];
+            if (current.isBot && current.lives > 0 && current.hp > 0) {
+                botTimer = setTimeout(executeBotTurn, 1000);
             }
         }
 
-        if (projectile) {
-            if (projectile.x >= 0 && projectile.x < canvas.width && projectile.y >= terrain[Math.floor(projectile.x)]) {
-                const craterX = Math.floor(projectile.x); playExplosionSound();
-                for (let x = craterX - 25; x <= craterX + 25; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 25*25 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
-                checkExplosionDamage(craterX); 
-                let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
-                projectile = null; if (wasAi) socket.emit('aiFinishedTurn');
-            } else if (projectile.x < 0 || projectile.x >= canvas.width || projectile.y > canvas.height) { 
-                let wasAi = gamePlayers[projectile.owner] && gamePlayers[projectile.owner].isAi;
-                projectile = null; if (wasAi) socket.emit('aiFinishedTurn');
+        function executeBotTurn() {
+            if (!gameActive || activeMissiles.length > 0 || activeExplosions.length > 0 || activeOilPuddles.length > 0 || gameState !== "PLAYING") return;
+
+            let bot = players[currentPlayerIndex];
+            
+            if (Math.random() < 0.35) {
+                let randomDir = Math.random() < 0.5 ? 1 : -1;
+                let moves = bot.difficulty === "hard" ? 2 : 1;
+                for(let m = 0; m < moves; m++) {
+                    moveTank(bot, randomDir);
+                }
+            }
+
+            bot.selectedWeapon = "standard";
+            if (Math.random() < 0.25) {
+                if (Math.random() < 0.5 && bot.ammo.cluster > 0) {
+                    bot.selectedWeapon = "cluster";
+                } else if (bot.ammo.oil > 0) {
+                    bot.selectedWeapon = "oil";
+                }
+            }
+
+            let targets = players.filter((t, idx) => idx !== currentPlayerIndex && t.lives > 0 && t.hp > 0);
+            if (targets.length === 0) return;
+            
+            let target = targets[Math.floor(Math.random() * targets.length)];
+            let dx = target.x - bot.x;
+            let baseAngle = dx > 0 ? 45 : 135;
+            let distance = Math.abs(dx);
+            let basePower = 30 + (distance / 12);
+            
+            let angleSpread = 0, powerSpread = 0, windFactor = 0;
+
+            if (bot.difficulty === "easy") {
+                angleSpread = 30; powerSpread = 24; windFactor = 0.1;
+            } else if (bot.difficulty === "medium") {
+                angleSpread = 14; powerSpread = 10; windFactor = 0.6;
+            } else if (bot.difficulty === "hard") {
+                angleSpread = 4; powerSpread = 3; windFactor = 1.05;
+            }
+
+            let randomAngleOffset = (Math.random() * angleSpread) - (angleSpread / 2);
+            let randomPowerOffset = (Math.random() * powerSpread) - (powerSpread / 2);
+            let windCompensation = -wind * 145 * (dx > 0 ? 1 : -1) * windFactor;
+
+            bot.angle = Math.floor(baseAngle + randomAngleOffset);
+            bot.power = Math.floor(Math.max(20, Math.min(100, basePower + randomPowerOffset + windCompensation)));
+            
+            if (bot.angle < 0) bot.angle = 0;
+            if (bot.angle > 180) bot.angle = 180;
+
+            fireMissile(bot);
+        }
+
+        // --- לוגיקת המשחק הראשית ---
+
+        function generateTerrain() {
+            let baseHeight = HEIGHT * 0.7 + (Math.random() * 50 - 25);
+            let frequency = 0.004 + Math.random() * 0.005;
+
+            for (let x = 0; x < WIDTH; x++) {
+                let wave = Math.sin(x * frequency) * 80;
+                let extraWave = Math.sin(x * frequency * 3.5) * 20;
+                terrain[x] = baseHeight + wave + extraWave;
+            }
+            updateTankPositions();
+            changeWind();
+        }
+
+        function updateTankPositions() {
+            players.forEach(tank => {
+                if (tank.lives > 0 && tank.hp > 0) tank.y = terrain[tank.x];
+            });
+        }
+
+        function changeWind() {
+            wind = (Math.random() * 0.16) - 0.08;
+        }
+
+        // --- פונקציית ציור השמיים הדינמיים ---
+        function drawSky() {
+            let cycleIndex = totalShotsFired % 15;
+            let skyGradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+
+            // 1. הגדרת צבע השמיים לפי כמות היריות
+            if (cycleIndex >= 0 && cycleIndex <= 2) {
+                // לפנות בוקר
+                skyGradient.addColorStop(0, "#1A237E"); 
+                skyGradient.addColorStop(1, "#3F51B5"); 
+            } 
+            else if (cycleIndex >= 3 && cycleIndex <= 5) {
+                // אמצע היום
+                skyGradient.addColorStop(0, "#81D4FA"); 
+                skyGradient.addColorStop(1, "#B3E5FC"); 
+            } 
+            else if (cycleIndex >= 6 && cycleIndex <= 9) {
+                // שקיעה
+                skyGradient.addColorStop(0, "#4A148C"); 
+                skyGradient.addColorStop(0.5, "#E64A19"); 
+                skyGradient.addColorStop(1, "#D84315"); 
+            } 
+            else if (cycleIndex >= 10 && cycleIndex <= 14) {
+                // לילה
+                skyGradient.addColorStop(0, "#0A0E29"); 
+                skyGradient.addColorStop(1, "#1A1F3C"); 
+            }
+
+            ctx.fillStyle = skyGradient;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(WIDTH, 0);
+            ctx.lineTo(WIDTH, HEIGHT);
+            ctx.lineTo(0, HEIGHT);
+            ctx.closePath();
+            ctx.fill();
+
+            // 2. ציור גרמי השמיים (רק בחלק העליון)
+            if (cycleIndex >= 3 && cycleIndex <= 5) {
+                // שמש של צהריים
+                ctx.fillStyle = "#FFEB3B";
+                ctx.beginPath();
+                ctx.arc(WIDTH / 2, 110, 32, 0, Math.PI * 2);
+                ctx.fill();
+
+                // עננים מפוקסלים ברקע
+                ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+                ctx.fillRect(150, 100, 70, 16);
+                ctx.fillRect(170, 88, 40, 16);
+                ctx.fillRect(520, 120, 85, 18);
+                ctx.fillRect(545, 106, 50, 18);
+            } 
+            else if (cycleIndex >= 6 && cycleIndex <= 9) {
+                // שמש שוקעת
+                ctx.fillStyle = "#FF3D00";
+                ctx.beginPath();
+                ctx.arc(WIDTH / 2 - 40, 240, 26, 0, Math.PI * 2);
+                ctx.fill();
+            } 
+            else if (cycleIndex >= 10 && cycleIndex <= 14) {
+                // ירח
+                ctx.fillStyle = "#ECEFF1";
+                ctx.beginPath();
+                ctx.arc(WIDTH - 120, 120, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = "rgba(255,255,255,0.06)";
+                ctx.beginPath();
+                ctx.arc(WIDTH - 120, 120, 30, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
-    }
 
-    for (let i = clusterProjectiles.length - 1; i >= 0; i--) {
-        let cp = clusterProjectiles[i]; cp.vy += gravity; cp.x += cp.vx; cp.y += cp.vy;
-        ctx.beginPath(); ctx.arc(cp.x, cp.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#ff6633'; ctx.fill();
-        if (cp.x >= 0 && cp.x < canvas.width && cp.y >= terrain[Math.floor(cp.x)]) {
-            const craterX = Math.floor(cp.x); playExplosionSound();
-            for (let x = craterX - 12; x <= craterX + 12; x++) { if (x >= 0 && x < canvas.width) { const dist = Math.abs(x - craterX); const depth = Math.sqrt(Math.max(0, 12*12 - dist*dist)); terrain[x] = Math.min(480, terrain[x] + depth); } }
-            checkExplosionDamage(craterX, 22, 18); let ownerId = cp.owner; clusterProjectiles.splice(i, 1);
-            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
-        } else if (cp.x < 0 || cp.x >= canvas.width || cp.y > canvas.height) { let ownerId = cp.owner; clusterProjectiles.splice(i, 1); if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn'); }
-    }
+        // --- ציור האדמה המשופר - חותך ומוחק את השמיים תחתיו ---
+        function drawTerrain() {
+            ctx.fillStyle = "#8B5A2B"; // חום אדמה
+            ctx.beginPath();
+            
+            // מתחילים מהפינה השמאלית התחתונה
+            ctx.moveTo(0, HEIGHT);
 
-    for (let i = oilDrops.length - 1; i >= 0; i--) {
-        let od = oilDrops[i]; od.life--; od.vy += gravity; od.x += od.vx; od.y += od.vy;
-        if (od.x >= 0 && od.x < canvas.width && od.y >= terrain[Math.floor(od.x)]) {
-            od.y = terrain[Math.floor(od.x)];
-            let leftSlope = terrain[Math.max(0, Math.floor(od.x) - 3)]; let rightSlope = terrain[Math.min(canvas.width - 1, Math.floor(od.x) + 3)];
-            if (leftSlope > rightSlope) od.vx = 1.5; else if (rightSlope > leftSlope) od.vx = -1.5; else od.vx = (Math.random() - 0.5) * 1.5;
-            od.x += od.vx; od.vy = 0;
-            for (let id in gamePlayers) {
-                const p = gamePlayers[id]; const tSpecs = TANK_TYPES[p.type];
-                if (Math.abs(od.x - p.x) < (tSpecs.width / 2) && p.hp > 0) {
-                    p.hp = Math.max(0, p.hp - 4); rebuildTopUi();
-                    if (p.hp <= 0 && gameActive) { p.lives--; rebuildTopUi(); if(id === myId) handlePlayerDeath(); else p.hp=p.maxHp; }
-                    od.life = 0; break;
+            // עוברים פיקסל פיקסל ומשרטטים את קו הרכס
+            for (let x = 0; x < WIDTH; x++) {
+                ctx.lineTo(x, terrain[x]);
+            }
+
+            // סוגרים לפינה הימנית התחתונה
+            ctx.lineTo(WIDTH, HEIGHT);
+            ctx.closePath();
+            
+            // המילוי הזה דורס ומכסה את הרקע הכחול בדיוק בקו הגבעות!
+            ctx.fill(); 
+        }
+
+        function drawTank(tank) {
+            if (tank.lives <= 0 || tank.hp <= 0) return;
+
+            ctx.fillStyle = "red";
+            ctx.fillRect(tank.x - 15, tank.y - tank.height - 18, 30, 4);
+            ctx.fillStyle = "green";
+            ctx.fillRect(tank.x - 15, tank.y - tank.height - 18, 30 * (tank.hp / 100), 4);
+
+            let w = tank.width;
+            let h = tank.height;
+            let tracksHeight = Math.max(3, Math.floor(h * 0.3)); 
+            let bodyHeight = h - tracksHeight;                
+            let turretRadius = Math.max(3, Math.floor(w * 0.22)); 
+
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 1.5;
+
+            ctx.fillStyle = "#333333";
+            ctx.fillRect(tank.x - w/2, tank.y - tracksHeight, w, tracksHeight);
+            ctx.strokeRect(tank.x - w/2, tank.y - tracksHeight, w, tracksHeight);
+            
+            ctx.fillStyle = "#111111";
+            let wheelCount = tank.size === "large" ? 4 : (tank.size === "small" ? 2 : 3);
+            let wheelWidth = Math.floor(w / (wheelCount * 2));
+            for(let k=0; k<wheelCount; k++) {
+                let wx = (tank.x - w/2 + 2) + (k * (w / wheelCount));
+                ctx.fillRect(wx, tank.y - tracksHeight + 1, wheelWidth, tracksHeight - 2);
+            }
+
+            ctx.fillStyle = tank.color;
+            ctx.fillRect(tank.x - w/2, tank.y - h, w, bodyHeight);
+            ctx.strokeRect(tank.x - w/2, tank.y - h, w, bodyHeight);
+
+            ctx.strokeStyle = "rgba(0,0,0,0.4)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(tank.x - w/2 + 3, tank.y - h + bodyHeight/2);
+            ctx.lineTo(tank.x + w/2 - 3, tank.y - h + bodyHeight/2); 
+            ctx.stroke();
+
+            ctx.fillStyle = tank.color;
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(tank.x, tank.y - h, turretRadius, Math.PI, 0); 
+            ctx.lineTo(tank.x - turretRadius, tank.y - h);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            let barrelX = tank.x;
+            let barrelY = tank.y - h - 1; 
+            let radians = (tank.angle * Math.PI) / 180;
+            let endX = barrelX + Math.cos(radians) * tank.barrelLength;
+            let endY = barrelY - Math.sin(radians) * tank.barrelLength;
+            
+            ctx.strokeStyle = tank.color;
+            ctx.lineWidth = tank.size === "large" ? 4 : (tank.size === "small" ? 2 : 3);
+            ctx.beginPath();
+            ctx.moveTo(barrelX, barrelY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            ctx.strokeStyle = "rgba(0,0,0,0.5)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            let sizeLabel = tank.size === "large" ? "גדול" : (tank.size === "small" ? "קטן" : "בינ");
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.font = "9px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(sizeLabel, tank.x, tank.y - tank.height - 25);
+        }
+
+        function fireMissile(tank) {
+            if (activeMissiles.length > 0 || activeExplosions.length > 0 || activeOilPuddles.length > 0 || tank.hp <= 0 || !gameActive) return;
+
+            if (tank.ammo[tank.selectedWeapon] <= 0) {
+                tank.selectedWeapon = "standard"; 
+            }
+
+            playShootSound();
+            totalShotsFired++; 
+
+            let barrelX = tank.x;
+            let barrelY = tank.y - tank.height - 1; 
+            let radians = (tank.angle * Math.PI) / 180;
+            let speed = tank.power / 9;
+            
+            let newMissile = {
+                x: barrelX + Math.cos(radians) * (tank.barrelLength + 3),
+                y: barrelY - Math.sin(radians) * (tank.barrelLength + 3),
+                vx: Math.cos(radians) * speed,
+                vy: -Math.sin(radians) * speed,
+                type: tank.selectedWeapon, 
+                explosionRadius: tank.explosionRadius,
+                damageMultiplier: tank.damageMultiplier,
+                hasSplit: false,
+                ownerId: tank.id 
+            };
+
+            activeMissiles.push(newMissile);
+
+            if (tank.selectedWeapon !== "standard") {
+                tank.ammo[tank.selectedWeapon]--;
+            }
+        }
+
+        function triggerExplosion(x, y, type, radius, damageMult) {
+            if (type === "oil") {
+                let newPuddle = {
+                    x: x,
+                    y: y,
+                    radius: radius * 1.2, 
+                    timer: 180,           
+                    damageMultiplier: damageMult
+                };
+                activeOilPuddles.push(newPuddle);
+                playExplosionSound(); 
+                return;
+            }
+
+            let maxR = radius * 1.3;
+            if (type === "sub-cluster") maxR = radius * 0.7; 
+
+            let newExplosion = {
+                x: x,
+                y: y,
+                radius: 0,
+                maxRadius: maxR,
+                timer: 20,
+                type: type
+            };
+            activeExplosions.push(newExplosion);
+            playExplosionSound();
+
+            let currentRadius = (type === "sub-cluster") ? radius * 0.5 : radius;
+
+            for (let tx = Math.max(0, Math.floor(x - currentRadius)); tx < Math.min(WIDTH, Math.ceil(x + currentRadius)); tx++) {
+                let dx = tx - x;
+                let dy = Math.sqrt(Math.max(0, currentRadius * currentRadius - dx * dx));
+                let bottomY = y + dy;
+                
+                if (terrain[tx] < bottomY) {
+                    let maxAllowedDepth = HEIGHT - 15;
+                    terrain[tx] = Math.min(maxAllowedDepth, Math.max(bottomY, terrain[tx]));
+                }
+            }
+            
+            players.forEach(tank => applyDirectDamage(tank, x, y, type, currentRadius, damageMult));
+        }
+
+        function applyDirectDamage(tank, ex, ey, type, radius, damageMult) {
+            if (tank.lives <= 0 || tank.hp <= 0) return;
+            
+            let dx = tank.x - ex;
+            let dy = (tank.y - tank.height/2) - ey;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < radius) {
+                let damageFactor = 1 - (distance / radius);
+                let baseDamage = type === "sub-cluster" ? 25 : 55;
+                
+                let damage = Math.floor(damageFactor * baseDamage * damageMult);
+                reduceHP(tank, damage);
+            }
+        }
+
+        function updateOilPuddles() {
+            if (activeOilPuddles.length === 0) return;
+
+            for (let i = activeOilPuddles.length - 1; i >= 0; i--) {
+                let puddle = activeOilPuddles[i];
+                puddle.timer--;
+
+                players.forEach(tank => {
+                    if (tank.lives > 0 && tank.hp > 0) {
+                        let dx = tank.x - puddle.x;
+                        let dy = tank.y - puddle.y;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < puddle.radius) {
+                            let burnDamage = 0.4 * puddle.damageMultiplier;
+                            reduceHP(tank, burnDamage);
+                        }
+                    }
+                });
+
+                if (puddle.timer % 4 === 0) {
+                    for (let tx = Math.max(0, Math.floor(puddle.x - puddle.radius * 0.8)); tx < Math.min(WIDTH, Math.ceil(puddle.x + puddle.radius * 0.8)); tx++) {
+                        let maxAllowedDepth = HEIGHT - 15;
+                        if (terrain[tx] < maxAllowedDepth) {
+                            terrain[tx] += 0.6; 
+                            if (terrain[tx] > maxAllowedDepth) terrain[tx] = maxAllowedDepth;
+                        }
+                    }
+                }
+
+                if (puddle.timer <= 0) {
+                    activeOilPuddles.splice(i, 1);
+                }
+            }
+
+            checkAndProgressTurn();
+        }
+
+        function reduceHP(tank, amount) {
+            tank.hp -= amount;
+            if (tank.hp <= 0) {
+                tank.hp = 0;
+                tank.lives--; 
+            }
+        }
+
+        function drawOilPuddles() {
+            activeOilPuddles.forEach(puddle => {
+                let startX = Math.max(0, Math.floor(puddle.x - puddle.radius));
+                let endX = Math.min(WIDTH, Math.ceil(puddle.x + puddle.radius));
+
+                for (let x = startX; x < endX; x++) {
+                    let groundY = terrain[x];
+                    let flameHeight = 10 + Math.random() * 15;
+                    
+                    ctx.fillStyle = "rgba(230, 30, 10, 0.7)";
+                    ctx.fillRect(x, groundY - flameHeight, 1, flameHeight);
+
+                    ctx.fillStyle = Math.random() < 0.5 ? "rgba(255, 200, 0, 0.9)" : "rgba(255, 100, 0, 0.8)";
+                    ctx.fillRect(x, groundY - (flameHeight * 0.6), 1, flameHeight * 0.6);
+                }
+            });
+        }
+
+        function checkGameOver() {
+            let activeTeams = players.filter(t => t.lives > 0);
+            if (activeTeams.length === 1) {
+                gameActive = false;
+                winnerName = activeTeams[0].name;
+                if (botTimer) clearTimeout(botTimer);
+                playVictoryFanfare();
+            } else if (activeTeams.length === 0) {
+                gameActive = false;
+                winnerName = "תיקו מוחלט!";
+                if (botTimer) clearTimeout(botTimer);
+            }
+        }
+
+        function updateExplosions() {
+            if (activeExplosions.length === 0) return;
+
+            for (let i = activeExplosions.length - 1; i >= 0; i--) {
+                let exp = activeExplosions[i];
+                exp.radius += (exp.maxRadius / 20);
+                exp.timer--;
+
+                if (exp.timer <= 0) {
+                    activeExplosions.splice(i, 1); 
+                }
+            }
+
+            checkAndProgressTurn();
+        }
+
+        function checkAndProgressTurn() {
+            if (activeExplosions.length === 0 && activeMissiles.length === 0 && activeOilPuddles.length === 0) {
+                checkGameOver();
+                if (!gameActive) return;
+
+                let respawnTriggered = false;
+                for (let i = 0; i < players.length; i++) {
+                    let p = players[i];
+                    if (p.lives > 0 && p.hp <= 0) {
+                        if (p.isBot) {
+                            handleBotRespawn(i);
+                        } else {
+                            openRespawnMenu(i);
+                            respawnTriggered = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!respawnTriggered) {
+                    processNextTurnLogic();
                 }
             }
         }
-        ctx.beginPath(); ctx.arc(od.x, od.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#00ffcc'; ctx.fill();
-        if (od.x < 0 || od.x >= canvas.width || od.y > canvas.height || od.life <= 0) {
-            let ownerId = od.owner; oilDrops.splice(i, 1);
-            if (clusterProjectiles.length === 0 && oilDrops.length === 0 && !projectile && gamePlayers[ownerId] && gamePlayers[ownerId].isAi) socket.emit('aiFinishedTurn');
+
+        function processNextTurnLogic() {
+            switchTurn();
         }
-    }
 
-    requestAnimationFrame(draw);
-}
-
-function drawSkyAndCelestialBodies() {
-    let stage = Math.floor(totalShotsFiredInGame / 2) % 4;
-    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    if (stage === 0) { skyGradient.addColorStop(0, '#2c3e50'); skyGradient.addColorStop(1, '#0c2461'); } 
-    else if (stage === 1) { skyGradient.addColorStop(0, '#3498db'); skyGradient.addColorStop(1, '#87ceeb'); } 
-    else if (stage === 2) { skyGradient.addColorStop(0, '#6f1573'); skyGradient.addColorStop(1, '#2c3e50'); } 
-    else { skyGradient.addColorStop(0, '#0f172a'); skyGradient.addColorStop(1, '#020617'); }
-    ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (stage <= 1) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(100 + i*200, 80, 20, 0, Math.PI*2); ctx.arc(120 + i*200, 75, 25, 0, Math.PI*2); ctx.arc(140 + i*200, 80, 18, 0, Math.PI*2); ctx.fill(); }
-    }
-    let bodyX = canvas.width - ((totalShotsFiredInGame * 40) % (canvas.width + 100));
-    if (stage <= 1) { ctx.save(); ctx.shadowBlur = 25; ctx.shadowColor = "#ffaa00"; ctx.beginPath(); ctx.arc(bodyX, 60, 16, 0, Math.PI * 2); ctx.fillStyle = "#ffcc00"; ctx.fill(); ctx.restore(); } 
-    else { ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#fff"; ctx.beginPath(); ctx.arc(bodyX, 70, 14, 0, Math.PI * 2); ctx.fillStyle = "#e2e8f0"; ctx.fill(); ctx.restore(); }
-}
-
-function endTurnWithMovement() { clearInterval(turnTimerInterval); socket.emit('fire', { vx: 0, vy: 0, special: 'moved' }); }
-
-let activeKeys = {};
-window.addEventListener('keydown', (e) => { 
-    activeKeys[e.key] = true; 
-    if (e.key === '1' || e.key === '2' || e.key === '3') { const keyNum = parseInt(e.key); if (playerInventory[keyNum]) { selectedWeaponKey = keyNum; playMoveSound(); rebuildTopUi(); } }
-});
-window.addEventListener('keyup', (e) => { delete activeKeys[e.key]; });
-
-function handleGameControls() {
-    if (!gameActive || currentTurnId !== myId || projectile || clusterProjectiles.length > 0 || oilDrops.length > 0) return;
-    const me = gamePlayers[myId]; if(!me || me.hp <= 0) return;
-    let changed = false;
-
-    if (activeKeys['Shift']) {
-        if (playerMovesLeft > 0) {
-            let nextX = me.x;
-            if (activeKeys['ArrowLeft'] || activeKeys['a']) { nextX = me.x - 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowLeft'] = false; activeKeys['a'] = false; changed = true; }
-            if (activeKeys['ArrowRight'] || activeKeys['d']) { nextX = me.x + 6; playerMovesLeft--; stats.player.moves++; activeKeys['ArrowRight'] = false; activeKeys['d'] = false; changed = true; }
-            if (nextX > 30 && nextX < canvas.width - 30) { me.x = nextX; playMoveSound(); socket.emit('move', { x: me.x }); }
-            if (playerMovesLeft <= 0) { updateStatusText(); setTimeout(() => { endTurnWithMovement(); }, 600); return; }
+        function drawExplosions() {
+            activeExplosions.forEach(exp => {
+                if (exp.type === "sub-cluster") {
+                    ctx.fillStyle = `rgba(100, 200, 255, 0.8)`;
+                } else {
+                    ctx.fillStyle = `rgba(255, ${Math.floor(200 * (1 - exp.timer/20))}, 0, 0.75)`;
+                }
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
         }
-    } else {
-        if (activeKeys['ArrowUp']) { myAngle = Math.min(180, myAngle + 1); changed = true; resetTurnTimerOnAim(); }
-        if (activeKeys['ArrowDown']) { myAngle = Math.max(0, myAngle - 1); changed = true; resetTurnTimerOnAim(); }
-        if (activeKeys['ArrowRight']) { myPower = Math.min(100, myPower + 0.5); changed = true; resetTurnTimerOnAim(); }
-        if (activeKeys['ArrowLeft']) { myPower = Math.max(1, myPower - 0.5); changed = true; resetTurnTimerOnAim(); }
-    }
 
-    if (changed) { updateStatusText(); if (!activeKeys['Shift']) socket.emit('updateAim', { angle: myAngle, power: myPower }); }
+        function updateMissiles() {
+            if (activeMissiles.length === 0) return;
 
-    if (activeKeys[' ']) {
-        activeKeys[' '] = false; executeWeaponFire();
-    }
-}
+            for (let i = activeMissiles.length - 1; i >= 0; i--) {
+                let m = activeMissiles[i];
+                let previousVy = m.vy;
 
-function executeWeaponFire() {
-    if (!gameActive || currentTurnId !== myId || projectile) return;
-    const activeWeapon = playerInventory[selectedWeaponKey];
-    if (activeWeapon.ammo <= 0) return;
-    if (activeWeapon.ammo !== Infinity) activeWeapon.ammo--;
+                m.x += m.vx;
+                m.y += m.vy;
+                m.vy += GRAVITY;
+                m.vx += wind;
 
-    clearInterval(turnTimerInterval); 
-    const me = gamePlayers[myId]; const tSpecs = TANK_TYPES[me.type];
-    const rad = (myAngle * Math.PI) / 180; const speed = myPower * 0.12;
-    playLaserSound(); rebuildTopUi();
-    socket.emit('fire', { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed, wType: activeWeapon.type });
-}
+                if (m.type === "cluster" && !m.hasSplit && previousVy < 0 && m.vy >= 0) {
+                    m.hasSplit = true;
+                    
+                    for (let k = 0; k < 4; k++) {
+                        let spreadX = (k - 1.5) * 1.2; 
+                        let subMissile = {
+                            x: m.x,
+                            y: m.y,
+                            vx: m.vx + spreadX,
+                            vy: m.vy + (Math.random() * 1), 
+                            type: "sub-cluster",
+                            explosionRadius: m.explosionRadius,
+                            damageMultiplier: m.damageMultiplier,
+                            hasSplit: true,
+                            ownerId: m.ownerId
+                        };
+                        activeMissiles.push(subMissile);
+                    }
+                    
+                    activeMissiles.splice(i, 1);
+                    continue;
+                }
 
-function updateStatusText() {
-    if (!gameActive) return;
-    if (currentTurnId === myId) { statusDiv.innerText = `התור שלך! (עוצמה: ${Math.floor(myPower)} | זווית: ${myAngle}° | נשק: ${playerInventory[selectedWeaponKey].name} | דלק: ${playerMovesLeft}/5)`; statusDiv.style.color = "#ffcc00"; } 
-    else { const opposingName = gamePlayers[currentTurnId] ? gamePlayers[currentTurnId].name : "היריב"; statusDiv.innerText = `תור של ${opposingName}...`; statusDiv.style.color = "#ff3333"; }
-}
+                if (m.x < 0 || m.x >= WIDTH || m.y > HEIGHT) {
+                    activeMissiles.splice(i, 1);
+                    checkAndProgressTurn();
+                    continue;
+                }
 
-function showGameLayout() { 
-    document.getElementById('login-panel').style.display = 'none'; 
-    document.getElementById('lobby-panel').style.display = 'none'; 
-    document.getElementById('game-over-screen').style.display = 'none'; 
-    document.getElementById('game-container').style.display = 'block'; 
-    statusDiv.style.display = 'block'; 
-    document.getElementById('controls-info').style.display = 'block'; 
-    
-    if (window.innerHeight < 600 || window.innerWidth < 800 || /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-        document.getElementById('mobile-controls').style.display = 'flex';
-        document.getElementById('controls-info').style.display = 'none'; 
-    }
-}
+                let currentX = Math.floor(m.x);
+                if (currentX >= 0 && currentX < WIDTH) {
+                    let hitDetected = m.y >= terrain[currentX];
+                    
+                    if (!hitDetected) {
+                        for (let pIdx = 0; pIdx < players.length; pIdx++) {
+                            let tank = players[pIdx];
+                            if (tank.lives > 0 && tank.hp > 0 && tank.id !== m.ownerId) {
+                                if (Math.abs(m.x - tank.x) < tank.width/2 && m.y >= tank.y - tank.height && m.y <= tank.y) {
+                                    hitDetected = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-function setupMobileControls() {
-    const triggerKey = (key, state) => { activeKeys[key] = state; };
-    const setupBtn = (id, actionDown, actionUp) => {
-        const btn = document.getElementById(id); if (!btn) return;
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); actionDown(); });
-        if (actionUp) btn.addEventListener('touchend', (e) => { e.preventDefault(); actionUp(); });
-    };
-    setupBtn('m-up', () => { triggerKey('ArrowUp', true); }, () => { triggerKey('ArrowUp', false); });
-    setupBtn('m-down', () => { triggerKey('ArrowDown', true); }, () => { triggerKey('ArrowDown', false); });
-    setupBtn('m-left', () => { triggerKey('ArrowLeft', true); }, () => { triggerKey('ArrowLeft', false); });
-    setupBtn('m-right', () => { triggerKey('ArrowRight', true); }, () => { triggerKey('ArrowRight', false); });
-    const sBtn = document.getElementById('m-shift');
-    if(sBtn) { sBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(activeKeys['Shift']) { activeKeys['Shift'] = false; sBtn.classList.remove('btn-active-toggle'); } else { activeKeys['Shift'] = true; sBtn.classList.add('btn-active-toggle'); } }); }
-    setupBtn('m-w1', () => { selectedWeaponKey = 1; playMoveSound(); rebuildTopUi(); });
-    setupBtn('m-w2', () => { selectedWeaponKey = 2; playMoveSound(); rebuildTopUi(); });
-    setupBtn('m-w3', () => { selectedWeaponKey = 3; playMoveSound(); rebuildTopUi(); });
-    setupBtn('m-fire', () => { executeWeaponFire(); });
-}
+                    if (hitDetected) {
+                        activeMissiles.splice(i, 1);
+                        triggerExplosion(m.x, m.y, m.type, m.explosionRadius, m.damageMultiplier);
+                    }
+                }
+            }
+        }
 
-window.onload = function() { initializeShareLink(); setupMobileControls(); };
-setInterval(handleGameControls, 50);
-</script>
+        function drawMissiles() {
+            activeMissiles.forEach(m => {
+                if (m.type === "oil") ctx.fillStyle = "#FF4500"; 
+                else if (m.type === "cluster") ctx.fillStyle = "#FFD700"; 
+                else if (m.type === "sub-cluster") ctx.fillStyle = "#00FFFF"; 
+                else ctx.fillStyle = "#FFF"; 
+                
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, m.type === "oil" ? 4 : 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function switchTurn() {
+            changeWind();
+            do {
+                currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            } while (players[currentPlayerIndex].lives <= 0);
+
+            checkAndTriggerBot();
+        }
+
+        function drawUI() {
+            // פאנל נתונים עליון
+            ctx.fillStyle = "rgba(10, 10, 10, 0.85)";
+            ctx.fillRect(10, 10, WIDTH - 20, 45);
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(10, 10, WIDTH - 20, 45);
+
+            let cellWidth = (WIDTH - 20) / players.length;
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+
+            players.forEach((tank, index) => {
+                let cellX = 10 + (index * cellWidth) + (cellWidth / 2);
+                
+                ctx.fillStyle = tank.color;
+                let botTag = tank.isBot ? " [CPU]" : "";
+                ctx.fillText(`${tank.name}${botTag}`, cellX, 28);
+                
+                ctx.fillStyle = tank.lives <= 0 ? "#777" : "white";
+                let livesText = "";
+                if (tank.lives <= 0) {
+                    livesText = "הודח מהקרב 💀";
+                } else {
+                    livesText = "❤️ ".repeat(tank.lives) + `(${map_HP_Display(tank.hp)} HP)`;
+                }
+                ctx.font = "11px Arial";
+                ctx.fillText(livesText, cellX, 46);
+
+                if (index < players.length - 1) {
+                    ctx.strokeStyle = "#333";
+                    ctx.beginPath();
+                    ctx.moveTo(10 + (index + 1) * cellWidth, 12);
+                    ctx.lineTo(10 + (index + 1) * cellWidth, 50);
+                    ctx.stroke();
+                }
+            });
+
+            // כותרות שליטה
+            ctx.fillStyle = "white";
+            ctx.font = "bold 15px Arial";
+            ctx.textAlign = "center";
+            
+            if (!gameActive) {
+                ctx.fillStyle = "#FFD700";
+                ctx.font = "bold 20px Arial";
+                ctx.fillText(`הניצחון המוחלט שייך ל: ${winnerName}! 🌟`, WIDTH / 2, 95);
+            } else {
+                let current = players[currentPlayerIndex];
+                ctx.fillStyle = current.color;
+                let sizeText = current.size === "large" ? "גדול" : (current.size === "small" ? "קטן" : "בינוני");
+                ctx.fillText(`תור: ${current.name} [טנק ${sizeText}]`, WIDTH / 2, 85);
+            }
+            
+            let activeTank = players[currentPlayerIndex];
+            ctx.textAlign = "left";
+            ctx.fillStyle = "white";
+            ctx.font = "13px Arial";
+            ctx.fillText(`זווית: ${activeTank.angle}°`, 30, 85);
+            ctx.fillText(`עוצמה: ${activeTank.power}`, 30, 108);
+            
+            ctx.fillStyle = activeTank.selectedWeapon === "standard" ? "#FFD700" : "#aaa";
+            ctx.fillText(`[1] פגז רגיל: אינסוף`, 30, 135);
+            ctx.fillStyle = activeTank.selectedWeapon === "oil" ? "#FFD700" : "#aaa";
+            ctx.fillText(`[2] תבערת שמן: ${activeTank.ammo.oil}`, 30, 155);
+            ctx.fillStyle = activeTank.selectedWeapon === "cluster" ? "#FFD700" : "#aaa";
+            ctx.fillText(`[3] פגז מתפצל: ${activeTank.ammo.cluster}`, 30, 175);
+            
+            ctx.textAlign = "right";
+            let windText = wind > 0 ? `רוח: ימינה ->` : `<- רוח: שמאלה`;
+            if (Math.abs(wind) < 0.01) windText = "רוח: אין";
+            ctx.fillStyle = "white";
+            ctx.fillText(`${windText} (${Math.abs(Math.floor(wind * 500))})`, WIDTH - 30, 85);
+            
+            ctx.font = "11px Arial";
+            ctx.fillStyle = "#aaa";
+            ctx.fillText("שליטה: חצים לכוון | Shift + חצים לנסיעה | 1,2,3 לבחירת פגז | SPACE לירי", WIDTH - 30, 108);
+        }
+
+        function map_HP_Display(val) {
+            return Math.ceil(val);
+        }
+
+        // לולאת האנימציה המרכזית עם התיקון המוחלט של סדר השכבות
+        function gameLoop() {
+            if (gameState === "PLAYING" || gameState === "RESPAWN_SCREEN") {
+                if (gameState === "PLAYING") {
+                    updateMissiles();
+                    updateExplosions();
+                    updateOilPuddles();
+                    updateTankPositions();
+                }
+
+                // 1. מנקים את הפריים הקודם לחלוטין
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+                
+                // 2. שכבה 1 (האחורית ביותר): צובעים את השמיים הדינמיים והשמש/ירח
+                drawSky(); 
+                
+                // 3. שכבה 2: מציירים את האדמה החומה (היא אוטומטית תסתיר ותחתוך את החלק התחתון של השמיים)
+                drawTerrain();
+                
+                // 4. שכבה 3: מציירים את הלהבות מעל פני הקרקע
+                drawOilPuddles();
+                
+                // 5. שכבה 4: מציירים את הטנקים (הם תמיד ישבו בול על קו הרכס, גלויים ומעוצבים)
+                players.forEach(tank => drawTank(tank));
+                
+                // 6. שכבה 5: מעוף הפגזים ואפקט הפיצוצים באוויר
+                drawMissiles();
+                drawExplosions();
+                
+                // 7. שכבה 6 (הקדמית ביותר): לוח הנתונים והטקסטים
+                drawUI();
+            } else {
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener("keydown", function(e) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            if (gameState !== "PLAYING" || activeMissiles.length > 0 || activeExplosions.length > 0 || activeOilPuddles.length > 0 || !gameActive) return;
+
+            let activeTank = players[currentPlayerIndex];
+            if (activeTank.isBot) return;
+
+            if (e.key === "1") activeTank.selectedWeapon = "standard";
+            if (e.key === "2") { if (activeTank.ammo.oil > 0) activeTank.selectedWeapon = "oil"; }
+            if (e.key === "3") { if (activeTank.ammo.cluster > 0) activeTank.selectedWeapon = "cluster"; }
+
+            if (e.shiftKey) {
+                if (e.key === "ArrowLeft") moveTank(activeTank, -1);
+                if (e.key === "ArrowRight") moveTank(activeTank, 1);
+            } else {
+                if (e.key === "ArrowLeft") {
+                    activeTank.angle += 2;
+                    if (activeTank.angle > 180) activeTank.angle = 180;
+                }
+                if (e.key === "ArrowRight") {
+                    activeTank.angle -= 2;
+                    if (activeTank.angle < 0) activeTank.angle = 0;
+                }
+            }
+            
+            if (e.key === "ArrowUp") {
+                activeTank.power += 1;
+                if (activeTank.power > 100) activeTank.power = 100;
+            }
+            if (e.key === "ArrowDown") {
+                activeTank.power -= 1;
+                if (activeTank.power < 0) activeTank.power = 0;
+            }
+            if (e.key === " ") {
+                fireMissile(activeTank);
+            }
+        });
+
+        showStartScreen();
+        gameLoop();
+
+    </script>
 </body>
 </html>
