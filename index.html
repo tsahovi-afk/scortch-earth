@@ -246,15 +246,15 @@
         
        function showStartScreen() {
     gameState = "START_SCREEN";
-    // שימוש ב-div עם flex פנימי כדי לוודא מרכוז מושלם
     uiOverlay.innerHTML = `
-        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%;">
-            <div class="retro-title">אדמה חרוכה</div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="btn" onclick="selectPlayerCount(2)">2 טנקים</button>
-                <button class="btn" onclick="selectPlayerCount(3)">3 טנקים</button>
-                <button class="btn" onclick="selectPlayerCount(4)">4 טנקים</button>
-            </div>
+        <div class="retro-title">אדמה חרוכה</div>
+        <div style="font-size: 20px; margin-bottom: 25px; color: white;">בחר כמות שחקנים (3 חיים לכולם):</div>
+        <div class="button-grid">
+            <button class="btn" onclick="selectPlayerCount(2)">2 שחקנים</button>
+            <button class="btn" onclick="selectPlayerCount(3)">3 שחקנים</button>
+            <button class="btn" onclick="selectPlayerCount(4)">4 שחקנים</button>
+            <button class="btn" onclick="selectPlayerCount(5)">5 שחקנים</button>
+            <button class="btn" onclick="selectPlayerCount(6)">6 שחקנים</button>
         </div>
     `;
 }
