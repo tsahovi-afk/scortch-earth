@@ -31,20 +31,22 @@
     }
 
         .ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 1200px;
-            height: 800px;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            text-align: center;
-            box-sizing: border-box;
-            direction: rtl;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1200px;
+    height: 800px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* ממרכז את התוכן אנכית בדיוק באמצע הריבוע */
+    align-items: center;     /* ממרכז את התוכן אופקית בדיוק באמצע הריבוע */
+    color: white;
+    text-align: center;
+    box-sizing: border-box;
+    direction: rtl;
+    background: rgba(0,0,0,0.8); /* הוספתי רקע חצי-שקוף כדי שנראה את הגבולות של הריבוע */
+}
         }
         .retro-title {
             font-size: 50px;
