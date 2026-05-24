@@ -248,11 +248,13 @@
 
         // --- ניהול תפריטים ---
         
-       function showStartScreen() {
+       // 1. ככה נראה המסך פתיחה (דואג שהוא תמיד יחזור למרכז)
+function showStartScreen() {
     gameState = "START_SCREEN";
+    uiOverlay.style.display = "flex"; // מוודא שהיא מציגה את התוכן
     uiOverlay.innerHTML = `
         <div class="retro-title">אדמה חרוכה</div>
-        <div style="font-size: 20px; margin-bottom: 25px; color: white;">בחר כמות שחקנים (3 חיים לכולם):</div>
+        <div style="font-size: 20px; margin-bottom: 25px; color: white;">בחר כמות שחקנים:</div>
         <div class="button-grid">
             <button class="btn" onclick="selectPlayerCount(2)">2 שחקנים</button>
             <button class="btn" onclick="selectPlayerCount(3)">3 שחקנים</button>
@@ -261,6 +263,21 @@
             <button class="btn" onclick="selectPlayerCount(6)">6 שחקנים</button>
         </div>
     `;
+}
+
+// 2. ככה נראה התחלת המשחק (דואג להעלים את התיבה לגמרי)
+function startGame() {
+    // ... (הלוגיקה הקיימת שלך לבניית הטנקים) ...
+    
+    // --- התיקון הקריטי ---
+    uiOverlay.innerHTML = "";          // מוחק את התוכן מה-div
+    uiOverlay.style.display = "none";  // מכבה את ה-div שלא יפריע לכלום
+    
+    gameState = "PLAYING";
+    gameActive = true;
+    currentPlayerIndex = 0;
+    generateTerrain();
+    checkAndTriggerBot();
 }
 
         function selectPlayerCount(count) {
