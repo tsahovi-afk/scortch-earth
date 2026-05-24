@@ -30,25 +30,30 @@
         margin: 0 auto;          /* ממרכז את הקנבס בתוך הקונטיינר */
     }
 
-        .ui-overlay {
+.ui-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 1200px;
     height: 800px;
-    z-index: 2;
+    z-index: 10; /* העלינו את ה-z-index כדי שזה בטוח יהיה מעל הכל */
     display: flex;
     flex-direction: column;
-    justify-content: center; /* ממרכז את התוכן אנכית בדיוק באמצע הריבוע */
-    align-items: center;     /* ממרכז את התוכן אופקית בדיוק באמצע הריבוע */
-    color: white;
-    text-align: center;
-    box-sizing: border-box;
-    direction: rtl;
-    background: rgba(0,0,0,0.8); /* הוספתי רקע חצי-שקוף כדי שנראה את הגבולות של הריבוע */
+    justify-content: center; /* מרכז אנכית */
+    align-items: center;     /* מרכז אופקית */
+    background: rgba(0, 0, 0, 0.7); /* רקע שחור שקוף כדי לראות את המשחק מאחור */
+    pointer-events: auto;    /* מאפשר ללחוץ על הכפתורים */
 }
-        }
-        .retro-title {
+
+/* קלאס חדש לסידור הכפתורים בשורה */
+.button-grid {
+    display: flex;
+    flex-wrap: wrap;         /* מאפשר מעבר שורה אם אין מקום */
+    justify-content: center; /* ממרכז את הכפתורים בשורה */
+    gap: 15px;               /* מרווח בין כפתור לכפתור */
+    max-width: 1000px;       /* הגבלה כדי שלא יברחו לצדדים */
+}
+        .retro-title {
             font-size: 50px;
             color: #FFD700;
             text-shadow: 4px 4px #FF4500, 8px 8px #000;
