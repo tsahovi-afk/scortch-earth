@@ -135,7 +135,8 @@
         const HEIGHT = canvas.height;
 
         const terrain = [];
-
+        // --- תוספת המטוס ---
+        let plane = { x: -100, y: 50, speed: 2 };
         // --- מערכת סאונד רטרו ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -1125,7 +1126,44 @@
 
             requestAnimationFrame(gameLoop);
         }
+function drawPlane() {
+            ctx.fillStyle = "#CCC";
+            ctx.fillRect(plane.x, plane.y, 60, 20); // גוף המטוס
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText("✈️", plane.x + 15, plane.y + 15);
+        }
 
+        function gameLoop() {
+            if (gameState === "PLAYING" || gameState === "RESPAWN_SCREEN") {
+                if (gameState === "PLAYING") {
+                    // עדכון מיקום מטוס
+                    plane.x += plane.speed;
+                    if (plane.x > WIDTH) plane.x = -100;
+
+                    updateMissiles();
+                    updateExplosions();
+                    updateOilPuddles();
+                    updateTankPositions();
+                }
+
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+                drawSky();
+                drawTerrain();
+                drawOilPuddles();
+                
+                // ציור מטוס
+                drawPlane();
+                
+                players.forEach(tank => drawTank(tank));
+                drawMissiles();
+                drawExplosions();
+                drawUI();
+            } else {
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            }
+            requestAnimationFrame(gameLoop);
+        }
         window.addEventListener("keydown", function(e) {
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
